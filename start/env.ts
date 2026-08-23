@@ -19,9 +19,28 @@ export default await Env.create(new URL('../', import.meta.url), {
   LOG_LEVEL: Env.schema.string(),
 
   // App
-  APP_KEY: Env.schema.secret(),
+  APP_KEY: Env.schema.string(),
   APP_URL: Env.schema.string({ format: 'url', tld: false }),
 
   // Session
   SESSION_DRIVER: Env.schema.enum(['cookie', 'memory', 'database'] as const),
+
+  // Database
+  DB_HOST: Env.schema.string({ format: 'host' }),
+  DB_PORT: Env.schema.number(),
+  DB_USER: Env.schema.string(),
+  DB_PASSWORD: Env.schema.string.optional(),
+  DB_DATABASE: Env.schema.string(),
+
+  // Auth
+  JWT_SECRET: Env.schema.string(),
+  JWT_EXPIRY: Env.schema.string(),
+
+  // Hashing
+  HASH_DRIVER: Env.schema.enum(['argon', 'bcrypt'] as const),
+
+  // Rate limiting
+  LIMITER_STORE: Env.schema.enum(['database', 'redis'] as const),
+  THROTTLE_AUTH_MAX: Env.schema.number(),
+  THROTTLE_AUTH_WINDOW: Env.schema.number(),
 })
