@@ -14,7 +14,7 @@ env:
   HOST: 0.0.0.0
   # error level suppresses info/debug noise so test output is readable
   LOG_LEVEL: error
-  # CI-only test keys — not used in production, safe to commit to a tutorial repo
+  # CI-only test keys: not used in production, safe to commit to a tutorial repo
   APP_KEY: adonisjs_tutorial_ci_test_key_01
   APP_URL: http://localhost:3333
   SESSION_DRIVER: memory
@@ -36,7 +36,7 @@ jobs:
     runs-on: ubuntu-latest
 
     services:
-      # Official postgres:16 image — same version as docker-compose.test.yml.
+      # Official postgres:16 image, same version as docker-compose.test.yml.
       # Started before the job steps so the DB is ready when tests run.
       postgres:
         image: postgres:16
@@ -60,7 +60,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24
-          # npm cache keyed on package-lock.json — skips install on cache hit
+          # npm cache keyed on package-lock.json: skips install on cache hit
           cache: npm
 
       - name: Install dependencies
@@ -74,7 +74,7 @@ jobs:
 
       # Functional tests start the AdonisJS HTTP server and issue real requests.
       # Future browser / E2E suites will use @japa/browser-client with Playwright
-      # in headless-chromium mode — install steps will be added when that suite
+      # in headless-chromium mode; install steps will be added when that suite
       # is introduced.
       - name: Run tests
         run: npm test
