@@ -12,7 +12,8 @@
  * `start/kernel.ts`.
  */
 import app from '@adonisjs/core/services/app'
-import { type HttpContext, ExceptionHandler, errors } from '@adonisjs/core/http'
+import { type HttpContext, ExceptionHandler } from '@adonisjs/core/http'
+import { errors as vineErrors } from '@vinejs/vine'
 
 export default class HttpExceptionHandler extends ExceptionHandler {
   /**
@@ -43,8 +44,8 @@ export default class HttpExceptionHandler extends ExceptionHandler {
   async handle(error: unknown, ctx: HttpContext) {
     const { response, request } = ctx
 
-    // VineJS validation errors — preserve structured field messages
-    if (error instanceof errors.E_VALIDATION_ERROR) {
+    // VineJS validation errors: preserve structured field messages
+    if (error instanceof vineErrors.E_VALIDATION_ERROR) {
       return response.status(422).json({
         success: false,
         message: 'Validation failed',
