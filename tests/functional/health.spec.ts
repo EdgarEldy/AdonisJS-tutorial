@@ -12,7 +12,7 @@
  */
 import { test } from '@japa/runner'
 
-test.group('Health — liveness and error shape', () => {
+test.group('Health: liveness and error shape', () => {
   test('GET /api/v1/health returns 200 with full ApiResponse shape', async ({ client, assert }) => {
     const response = await client.get('/api/v1/health')
 
@@ -23,7 +23,7 @@ test.group('Health — liveness and error shape', () => {
       // The data payload must carry the status flag set by HealthController
       data: { status: 'ok' },
     })
-    // timestamp must be a non-empty ISO-8601 string — verifies the field is
+    // timestamp must be a non-empty ISO-8601 string: verifies the field is
     // present and formatted correctly, not just that the body echoes itself
     assert.isString(response.body().timestamp)
     assert.match(response.body().timestamp, /^\d{4}-\d{2}-\d{2}T/)
@@ -42,7 +42,7 @@ test.group('Health — liveness and error shape', () => {
     assert.isString(response.body().timestamp)
     assert.match(response.body().timestamp, /^\d{4}-\d{2}-\d{2}T/)
 
-    // path field links the error back to the request URL — also injected
+    // path field links the error back to the request URL, also injected
     // only by our custom handler
     assert.equal(response.body().path, '/api/v1/route-that-does-not-exist')
   })
