@@ -29,7 +29,10 @@ test.group('Health: liveness and error shape', () => {
     assert.match(response.body().timestamp, /^\d{4}-\d{2}-\d{2}T/)
   })
 
-  test('unknown route returns 404 with ApiResponse shape from custom handler', async ({ client, assert }) => {
+  test('unknown route returns 404 with ApiResponse shape from custom handler', async ({
+    client,
+    assert,
+  }) => {
     const response = await client.get('/api/v1/route-that-does-not-exist')
 
     // The exception handler must intercept the framework-level 404 and wrap
