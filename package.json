@@ -19,6 +19,7 @@
   },
   "imports": {
     "#controllers/*": "./app/controllers/*.js",
+    "#helpers/*": "./app/helpers/*.js",
     "#exceptions/*": "./app/exceptions/*.js",
     "#models/*": "./app/models/*.js",
     "#mails/*": "./app/mails/*.js",
@@ -81,5 +82,9 @@
     "esbuild": true,
     "fsevents": true
   },
-  "prettier": "@adonisjs/prettier-config"
+  "prettier": "@adonisjs/prettier-config",
+  "lint-staged": {
+    "*.{ts,js}": ["eslint --fix", "prettier --write"],
+    "*.{json,md}": ["prettier --write"]
+  }
 }
