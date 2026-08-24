@@ -15,4 +15,27 @@ export interface ApiDefinition {
     resetPassword: typeof routes['auth.reset_password']
     me: typeof routes['auth.me']
   }
+  users: {
+    index: typeof routes['users.index']
+    show: typeof routes['users.show']
+    update: typeof routes['users.update']
+    destroy: typeof routes['users.destroy']
+    assignRole: typeof routes['users.assign_role']
+    revokeRole: typeof routes['users.revoke_role']
+  }
+  roles: {
+    index: typeof routes['roles.index']
+    show: typeof routes['roles.show']
+    store: typeof routes['roles.store']
+    update: typeof routes['roles.update']
+    destroy: typeof routes['roles.destroy']
+    assignPermission: typeof routes['roles.assign_permission']
+    revokePermission: typeof routes['roles.revoke_permission']
+  }
+  permissions: {
+    index: typeof routes['permissions.index']
+    store: typeof routes['permissions.store']
+    update: typeof routes['permissions.update']
+    destroy: typeof routes['permissions.destroy']
+  }
 }
