@@ -1,6 +1,15 @@
 import app from '@adonisjs/core/services/app'
 import env from '#start/env'
+import pg from 'pg'
 import { defineConfig } from '@adonisjs/lucid'
+
+// NOTE: node-postgres returns BIGINT (OID 20) columns as strings by
+// default, since a bigint can exceed Number.MAX_SAFE_INTEGER. Every model
+// in this project types its bigIncrements primary keys and bigInteger
+// foreign keys as `number`, matching the README's own examples, so this
+// parser is registered here, before any pg connection is opened, to keep
+// ids and foreign keys as actual numbers rather than strings at runtime.
+pg.types.setTypeParser(20, (value: string) => Number.parseInt(value, 10))
 
 const dbConfig = defineConfig({
   /**
