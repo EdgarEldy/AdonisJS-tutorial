@@ -53,4 +53,11 @@ export default await Env.create(new URL('../', import.meta.url), {
   TEST_ADMIN_PASSWORD: Env.schema.string.optional(),
   TEST_USER_EMAIL: Env.schema.string.optional(),
   TEST_USER_PASSWORD: Env.schema.string.optional(),
+
+  // Mail
+  MAIL_MAILER: Env.schema.enum(['smtp'] as const),
+  MAIL_FROM_NAME: Env.schema.string(),
+  MAIL_FROM_ADDRESS: Env.schema.string(),
+  SMTP_HOST: Env.schema.string({ format: 'host' }),
+  SMTP_PORT: Env.schema.number(),
 })
