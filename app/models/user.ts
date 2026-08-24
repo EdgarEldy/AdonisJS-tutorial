@@ -30,7 +30,7 @@ export default class User extends BaseModel {
   declare email: string
 
   // Never serialized back to the client, in responses or JSON.stringify.
-  @column({ serializeUsing: () => undefined })
+  @column({ serializeAs: null })
   declare password: string
 
   @column()
