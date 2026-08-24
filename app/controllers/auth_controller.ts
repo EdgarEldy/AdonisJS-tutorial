@@ -23,8 +23,10 @@ export default class AuthController {
 
   async register({ request, response }: HttpContext) {
     const data = await request.validateUsing(registerSchema)
-    const result = await this.authService.register(data)
-    return response.created(respond(result, 'User registered, activation token issued'))
+    const user = await this.authService.register(data)
+    return response.created(
+      respond(user, 'User registered, check your email to activate your account')
+    )
   }
 
   async activate({ request, response }: HttpContext) {
@@ -67,8 +69,8 @@ export default class AuthController {
 
   async forgotPassword({ request, response }: HttpContext) {
     const { email } = await request.validateUsing(forgotPasswordSchema)
-    const token = await this.authService.forgotPassword(email)
-    return response.ok(respond({ token }, 'Password reset token issued'))
+    await this.authService.forgotPassword(email)
+    return response.ok(respond(null, 'Password reset email sent'))
   }
 
   async resetPassword({ request, response }: HttpContext) {
