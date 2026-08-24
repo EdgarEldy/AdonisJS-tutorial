@@ -1,25 +1,21 @@
 import { defineConfig } from '@adonisjs/auth'
 import { sessionGuard, sessionUserProvider } from '@adonisjs/auth/session'
-import { tokensGuard, tokensUserProvider } from '@adonisjs/auth/access_tokens'
 import type { InferAuthenticators, InferAuthEvents, Authenticators } from '@adonisjs/auth/types'
 
+// NOTE: the stateless JWT guard described in the README belongs to
+// feature/auth. This branch only needs the User model to resolve through
+// an auth guard well enough for the app to boot and typecheck; the
+// tokens guard from the default --kit=api scaffold required an
+// accessTokens provider on User that the EER_AUTH design does not use,
+// so it is dropped here rather than kept alongside a model that no
+// longer supports it. feature/auth replaces this guard with the JWT one.
 const authConfig = defineConfig({
   /**
    * Default guard used when no guard is explicitly specified.
    */
-  default: 'api',
+  default: 'web',
 
   guards: {
-    /**
-     * Token-based guard for stateless API authentication.
-     */
-    api: tokensGuard({
-      provider: tokensUserProvider({
-        tokens: 'accessTokens',
-        model: () => import('#models/user'),
-      }),
-    }),
-
     /**
      * Session-based guard for browser authentication.
      */
