@@ -42,18 +42,18 @@ export default class AuthController {
   /**
    * `middleware.auth()` on this route has already authenticated the
    * request and rejected a blacklisted jti before this action ever runs,
-   * so the guard's cached user and payload are read directly rather than
-   * re-authenticating. The raw bearer token itself is only available on
-   * the request header (JwtGuard resolves the user and payload from it
-   * but does not expose the token string back out), so it is extracted
-   * here and handed to the service, which needs it for the NOT NULL
-   * `token` column on `blacklisted_tokens`.
+   * so the guard's cached user, payload and token are read directly rather
+   * than re-authenticating or re-parsing the Authorization header. Reading
+   * `guard.token` instead of parsing the header a second time keeps token
+   * extraction defined in exactly one place, JwtGuard.authenticate(), so
+   * this controller cannot drift out of sync with what the guard itself
+   * considers a valid bearer token.
    */
-  async logout({ auth, request, response }: HttpContext) {
+  async logout({ auth, response }: HttpContext) {
     const guard = auth.use('jwt')
     const user = guard.getUserOrFail()
     const payload = guard.payload!
-    const rawToken = request.header('authorization')!.replace(/^Bearer\s+/, '')
+    const rawToken = guard.token!
 
     await this.authService.logout(user, payload, rawToken)
     return response.ok(respond(null, 'Logged out successfully'))

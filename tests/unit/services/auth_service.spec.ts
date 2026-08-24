@@ -32,12 +32,14 @@ import { ensureRole } from '#tests/helpers/auth_helper'
 
 const authService = new AuthService()
 
-async function createUser(overrides: Partial<{
-  email: string
-  password: string
-  enabled: boolean
-  accountLocked: boolean
-}> = {}) {
+async function createUser(
+  overrides: Partial<{
+    email: string
+    password: string
+    enabled: boolean
+    accountLocked: boolean
+  }> = {}
+) {
   return User.create({
     firstName: 'Test',
     lastName: 'Account',
@@ -126,7 +128,7 @@ test.group('AuthService - login', (group) => {
     try {
       await authService.login({ email, password: 'WrongPass1!' })
       assert.fail('expected login to throw for a wrong password')
-    } catch (error) {
+    } catch (error: any) {
       assert.equal(error.code, 'E_INVALID_CREDENTIALS')
       assert.equal(error.status, 400)
     }
@@ -139,7 +141,7 @@ test.group('AuthService - login', (group) => {
     try {
       await authService.login({ email, password: 'CorrectPass1!' })
       assert.fail('expected login to throw for a locked account')
-    } catch (error) {
+    } catch (error: any) {
       assert.equal(error.code, 'E_ACCOUNT_LOCKED')
       assert.equal(error.status, 403)
     }
@@ -152,7 +154,7 @@ test.group('AuthService - login', (group) => {
     try {
       await authService.login({ email, password: 'CorrectPass1!' })
       assert.fail('expected login to throw for an inactive account')
-    } catch (error) {
+    } catch (error: any) {
       assert.equal(error.code, 'E_ACCOUNT_NOT_ACTIVATED')
       assert.equal(error.status, 403)
     }
@@ -167,7 +169,7 @@ test.group('AuthService - login', (group) => {
     try {
       await authService.login({ email, password: 'CorrectPass1!' })
       assert.fail('expected login to throw')
-    } catch (error) {
+    } catch (error: any) {
       assert.equal(error.code, 'E_ACCOUNT_NOT_ACTIVATED')
     }
   }).timeout(10000)

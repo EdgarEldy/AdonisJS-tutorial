@@ -63,7 +63,7 @@ export async function ensureSeededUser(role: SeededRole): Promise<User> {
   let user = await User.findBy('email', email)
   if (!user) {
     user = await User.create({
-      firstName: role === 'admin' ? 'Seeded' : 'Seeded',
+      firstName: 'Seeded',
       lastName: role === 'admin' ? 'Admin' : 'User',
       email,
       password,

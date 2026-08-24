@@ -1,6 +1,7 @@
 import { errors as authErrors } from '@adonisjs/auth'
 import { createError } from '@adonisjs/core/exceptions'
 import hash from '@adonisjs/core/services/hash'
+import db from '@adonisjs/lucid/services/db'
 import { DateTime } from 'luxon'
 import type { Infer } from '@vinejs/vine/types'
 
@@ -80,28 +81,43 @@ export default class AuthService {
    * it by email, the same pattern `forgotPassword` uses below. Without
    * this, the register -> activate -> login functional test flow the
    * README's own task list requires would have no way to obtain the token.
+   *
+   * All three writes run inside a single transaction. Without one, a
+   * crash or a thrown error between `User.create` and `ActivationToken.create`
+   * would leave a user row permanently stuck: disabled, no role attached,
+   * no activation token to ever enable it, and unrecoverable through the
+   * unique email constraint. A transaction makes the whole registration
+   * succeed or fail as one unit instead.
    */
   async register(data: RegisterPayload) {
     const userRole = await Role.findByOrFail('roleName', DEFAULT_USER_ROLE)
 
-    const user = await User.create({
-      firstName: data.firstName,
-      lastName: data.lastName,
-      email: data.email,
-      password: data.password,
-      enabled: false,
-      accountLocked: false,
+    return db.transaction(async (trx) => {
+      const user = await User.create(
+        {
+          firstName: data.firstName,
+          lastName: data.lastName,
+          email: data.email,
+          password: data.password,
+          enabled: false,
+          accountLocked: false,
+        },
+        { client: trx }
+      )
+
+      await user.related('roles').attach([userRole.id])
+
+      const activationToken = await ActivationToken.create(
+        {
+          userId: user.id,
+          token: crypto.randomUUID(),
+          expiresAt: DateTime.now().plus({ hours: ACTIVATION_TOKEN_TTL_HOURS }),
+        },
+        { client: trx }
+      )
+
+      return { user, activationToken: activationToken.token }
     })
-
-    await user.related('roles').attach([userRole.id])
-
-    const activationToken = await ActivationToken.create({
-      userId: user.id,
-      token: crypto.randomUUID(),
-      expiresAt: DateTime.now().plus({ hours: ACTIVATION_TOKEN_TTL_HOURS }),
-    })
-
-    return { user, activationToken: activationToken.token }
   }
 
   /**

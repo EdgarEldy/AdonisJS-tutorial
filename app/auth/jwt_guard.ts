@@ -32,12 +32,16 @@ function secretKey() {
 
 /**
  * JWT_EXPIRY is documented as either a bare number of seconds ("3600") or a
- * jose style time span ("7d", "24h"). jose's own string parser requires a
- * unit suffix, so a purely numeric string is converted to a number first.
+ * jose style time span ("7d", "24h"). jose's setExpirationTime treats a
+ * plain JS number as an absolute Unix timestamp, not a duration, so passing
+ * Number("3600") would set exp to one hour past the epoch, a token that is
+ * already expired the instant it is issued. A purely numeric string is
+ * given an explicit "s" suffix instead, so jose's own relative time span
+ * parser handles it the same way it handles "7d" or "24h".
  */
-function expiresIn(): number | string {
+function expiresIn(): string {
   const value = env.get('JWT_EXPIRY')
-  return /^\d+$/.test(value) ? Number(value) : value
+  return /^\d+$/.test(value) ? `${value}s` : value
 }
 
 export async function signJwt(user: User): Promise<string> {
@@ -56,6 +60,8 @@ export class JwtGuard implements GuardContract<User> {
   readonly driverName = 'jwt' as const
   user?: User
   payload?: JwtPayload
+  /** The raw bearer token this request authenticated with, set once authenticate() succeeds. */
+  token?: string
   isAuthenticated = false
   authenticationAttempted = false;
 
@@ -107,6 +113,7 @@ export class JwtGuard implements GuardContract<User> {
 
     this.payload = payload
     this.user = user
+    this.token = token
     this.isAuthenticated = true
     return user
   }
