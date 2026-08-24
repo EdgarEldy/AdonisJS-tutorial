@@ -9,8 +9,14 @@
 |
 */
 
+import env from '#start/env'
 import limiter from '@adonisjs/limiter/services/main'
 
-export const throttle = limiter.define('global', () => {
-  return limiter.allowRequests(10).every('1 minute')
+/**
+ * Applied to register, login and forgot-password in start/routes.ts.
+ * Limits are read from THROTTLE_AUTH_MAX and THROTTLE_AUTH_WINDOW so an
+ * environment can tighten or relax them without a code change.
+ */
+export const authThrottle = limiter.define('auth', () => {
+  return limiter.allowRequests(env.get('THROTTLE_AUTH_MAX')).every(env.get('THROTTLE_AUTH_WINDOW'))
 })
