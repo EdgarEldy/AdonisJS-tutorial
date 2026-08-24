@@ -67,48 +67,60 @@ test.group('AuthService - register / activate', (group) => {
   }) => {
     const email = `register-${crypto.randomUUID()}@example.com`
 
-    const result = await authService.register({
+    const user = await authService.register({
       firstName: 'Ada',
       lastName: 'Lovelace',
       email,
       password: 'Password1!',
     })
 
-    assert.isNumber(result.user.id)
-    assert.equal(result.user.email, email)
-    assert.isFalse(result.user.enabled)
+    assert.isNumber(user.id)
+    assert.equal(user.email, email)
+    assert.isFalse(user.enabled)
 
-    await result.user.load('roles')
-    assert.isTrue(result.user.roles.some((role) => role.roleName === 'USER'))
+    await user.load('roles')
+    assert.isTrue(user.roles.some((role) => role.roleName === 'USER'))
 
-    assert.isString(result.activationToken)
-
+    // register() no longer returns the activation token directly (it is
+    // emailed via ActivationMail instead), so the persisted row is looked
+    // up by userId, most recent first, the same way a caller with only the
+    // user's id would have to.
     const tokenRow = await ActivationToken.query()
-      .where('token', result.activationToken)
+      .where('userId', user.id)
+      .orderBy('createdAt', 'desc')
       .firstOrFail()
-    assert.equal(tokenRow.userId, result.user.id)
+    assert.isString(tokenRow.token)
+    assert.isNotEmpty(tokenRow.token)
+    assert.equal(tokenRow.userId, user.id)
     assert.isNull(tokenRow.validatedAt)
   }).timeout(10000)
 
   test('activate sets enabled to true and marks the activation token as used', async ({
     assert,
   }) => {
-    const { user, activationToken } = await authService.register({
+    const user = await authService.register({
       firstName: 'Grace',
       lastName: 'Hopper',
       email: `activate-${crypto.randomUUID()}@example.com`,
       password: 'Password1!',
     })
 
-    const activatedUser = await authService.activate(activationToken)
+    const tokenRow = await ActivationToken.query()
+      .where('userId', user.id)
+      .orderBy('createdAt', 'desc')
+      .firstOrFail()
+
+    const activatedUser = await authService.activate(tokenRow.token)
 
     assert.isTrue(activatedUser.enabled)
 
     const reloadedUser = await User.findOrFail(user.id)
     assert.isTrue(reloadedUser.enabled)
 
-    const tokenRow = await ActivationToken.query().where('token', activationToken).firstOrFail()
-    assert.isNotNull(tokenRow.validatedAt)
+    const reloadedToken = await ActivationToken.query()
+      .where('token', tokenRow.token)
+      .firstOrFail()
+    assert.isNotNull(reloadedToken.validatedAt)
   }).timeout(10000)
 })
 
