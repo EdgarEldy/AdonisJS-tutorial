@@ -56,7 +56,10 @@ test.group('Database migrations - run and rollback', () => {
     // Sanity check: the tables should exist before this test does anything,
     // since the migrations were already applied ahead of the test run.
     for (const tableName of allTables) {
-      assert.isTrue(await tableExists(tableName), `expected "${tableName}" to exist before rollback`)
+      assert.isTrue(
+        await tableExists(tableName),
+        `expected "${tableName}" to exist before rollback`
+      )
     }
 
     try {
@@ -70,7 +73,10 @@ test.group('Database migrations - run and rollback', () => {
       assert.equal(rollback.status, 'completed')
 
       for (const tableName of allTables) {
-        assert.isFalse(await tableExists(tableName), `expected "${tableName}" to be dropped by rollback`)
+        assert.isFalse(
+          await tableExists(tableName),
+          `expected "${tableName}" to be dropped by rollback`
+        )
       }
 
       const rerun = new MigrationRunner(db, app, {
@@ -83,7 +89,10 @@ test.group('Database migrations - run and rollback', () => {
       assert.equal(rerun.status, 'completed')
 
       for (const tableName of allTables) {
-        assert.isTrue(await tableExists(tableName), `expected "${tableName}" to exist again after re-running`)
+        assert.isTrue(
+          await tableExists(tableName),
+          `expected "${tableName}" to exist again after re-running`
+        )
       }
     } catch (error) {
       // Best-effort recovery: make sure the schema is back in place even if
