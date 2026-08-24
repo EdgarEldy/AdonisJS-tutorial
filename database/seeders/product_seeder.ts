@@ -15,7 +15,9 @@ import Product from '#models/product'
 export default class ProductSeeder extends BaseSeeder {
   async run() {
     const categories = await Category.query().exec()
-    const categoryIdByName = new Map(categories.map((category) => [category.categoryName, category.id]))
+    const categoryIdByName = new Map(
+      categories.map((category) => [category.categoryName, category.id])
+    )
 
     const requireCategory = (name: string) => {
       const id = categoryIdByName.get(name)
@@ -25,20 +27,46 @@ export default class ProductSeeder extends BaseSeeder {
         // order (category_seeder before product_seeder) and MainSeeder's
         // explicit ordering both guarantee that, so this is a defensive
         // guard rather than the primary ordering mechanism.
-        throw new Error(`ProductSeeder requires the "${name}" category to exist. Run CategorySeeder first.`)
+        throw new Error(
+          `ProductSeeder requires the "${name}" category to exist. Run CategorySeeder first.`
+        )
       }
       return id
     }
 
     await Product.updateOrCreateMany('productName', [
-      { productName: 'Wireless Mouse', unitPrice: 19.99, categoryId: requireCategory('Electronics') },
-      { productName: 'Mechanical Keyboard', unitPrice: 79.99, categoryId: requireCategory('Electronics') },
-      { productName: 'The Pragmatic Programmer', unitPrice: 34.99, categoryId: requireCategory('Books') },
+      {
+        productName: 'Wireless Mouse',
+        unitPrice: 19.99,
+        categoryId: requireCategory('Electronics'),
+      },
+      {
+        productName: 'Mechanical Keyboard',
+        unitPrice: 79.99,
+        categoryId: requireCategory('Electronics'),
+      },
+      {
+        productName: 'The Pragmatic Programmer',
+        unitPrice: 34.99,
+        categoryId: requireCategory('Books'),
+      },
       { productName: 'Clean Code', unitPrice: 29.99, categoryId: requireCategory('Books') },
-      { productName: "Men's Denim Jacket", unitPrice: 59.99, categoryId: requireCategory('Clothing') },
+      {
+        productName: "Men's Denim Jacket",
+        unitPrice: 59.99,
+        categoryId: requireCategory('Clothing'),
+      },
       { productName: 'Cotton T-Shirt', unitPrice: 14.99, categoryId: requireCategory('Clothing') },
-      { productName: 'Stainless Steel Cookware Set', unitPrice: 129.99, categoryId: requireCategory('Home & Kitchen') },
-      { productName: 'Yoga Mat', unitPrice: 24.99, categoryId: requireCategory('Sports & Outdoors') },
+      {
+        productName: 'Stainless Steel Cookware Set',
+        unitPrice: 129.99,
+        categoryId: requireCategory('Home & Kitchen'),
+      },
+      {
+        productName: 'Yoga Mat',
+        unitPrice: 24.99,
+        categoryId: requireCategory('Sports & Outdoors'),
+      },
     ])
   }
 }
