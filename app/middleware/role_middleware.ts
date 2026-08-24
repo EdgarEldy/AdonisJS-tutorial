@@ -13,14 +13,35 @@ import type { NextFn } from '@adonisjs/core/types/http'
  * single middleware class enforce different role requirements on different
  * routes without duplicating logic.
  *
- * Full implementation (JWT lookup, role preloading, forbidden response) is
- * added in feature/auth once the User model and auth guard are in place.
- * Registering the stub here lets route declarations reference `middleware.role()`
- * from day one without causing import errors.
+ * This middleware always runs after `middleware.auth()` on a route (never
+ * standalone, per the constraint that auth and role middleware are wired
+ * at route declaration time), so the jti blacklist check has already
+ * happened by the time `handle()` runs here. Calling `auth.authenticate()`
+ * again below is cheap: JwtGuard's `authenticationAttempted` flag makes a
+ * second call within the same request return the already-resolved user
+ * instead of re-verifying the token.
  */
 export default class RoleMiddleware {
-  /** Passes the request through unconditionally until feature/auth wires the real check. */
-  async handle(_ctx: HttpContext, next: NextFn, _options: { roles: string[] }) {
+  async handle(ctx: HttpContext, next: NextFn, options: { roles: string[] }) {
+    await ctx.auth.authenticate()
+    const user = ctx.auth.user!
+
+    // `auth.authenticate()` resolves the user but never preloads relations.
+    // Reading `user.roles` without this call would silently see an empty
+    // array and reject every request, the exact bug called out in the
+    // README's troubleshooting section for this middleware.
+    await user.load('roles')
+
+    const hasRole = user.roles.some((role) => options.roles.includes(role.roleName))
+    if (!hasRole) {
+      return ctx.response.forbidden({
+        success: false,
+        message: 'Insufficient role',
+        timestamp: new Date().toISOString(),
+        path: ctx.request.url(),
+      })
+    }
+
     return next()
   }
 }
