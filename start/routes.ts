@@ -20,6 +20,9 @@ import { respond } from '#helpers/api_response'
 // Lazy import — AdonisJS resolves the module on the first matching request
 const HealthController = () => import('#controllers/health_controller')
 const AuthController = () => import('#controllers/auth_controller')
+const UsersController = () => import('#controllers/users_controller')
+const RolesController = () => import('#controllers/roles_controller')
+const PermissionsController = () => import('#controllers/permissions_controller')
 
 /*
 |--------------------------------------------------------------------------
@@ -69,6 +72,50 @@ router
     router.get('me', [AuthController, 'me']).use(middleware.auth())
   })
   .prefix('/api/v1/auth')
+
+/*
+|--------------------------------------------------------------------------
+| User, role and permission administration
+|--------------------------------------------------------------------------
+|
+| Registration always assigns the default USER role and nothing else in
+| the app manages `users`, `roles` or `permissions` afterward — these
+| endpoints are the only way to promote an account to ADMIN, create a new
+| role, or change what a role can do. Every single route below operates on
+| other accounts or on the authorization model itself, so all of them are
+| ADMIN only, applied at route declaration time via the group-level
+| .use([middleware.auth(), middleware.role({ roles: ['ADMIN'] })]) rather
+| than added retroactively per-route.
+|
+| Note there is deliberately no GET /api/v1/permissions/:id route: the
+| README's Endpoints table for this subsection lists a detail route for
+| users and roles but not for permissions.
+|
+*/
+router
+  .group(() => {
+    router.get('users', [UsersController, 'index'])
+    router.get('users/:id', [UsersController, 'show'])
+    router.put('users/:id', [UsersController, 'update'])
+    router.delete('users/:id', [UsersController, 'destroy'])
+    router.post('users/:id/roles', [UsersController, 'assignRole'])
+    router.delete('users/:id/roles/:roleId', [UsersController, 'revokeRole'])
+
+    router.get('roles', [RolesController, 'index'])
+    router.get('roles/:id', [RolesController, 'show'])
+    router.post('roles', [RolesController, 'store'])
+    router.put('roles/:id', [RolesController, 'update'])
+    router.delete('roles/:id', [RolesController, 'destroy'])
+    router.post('roles/:id/permissions', [RolesController, 'assignPermission'])
+    router.delete('roles/:id/permissions/:permissionId', [RolesController, 'revokePermission'])
+
+    router.get('permissions', [PermissionsController, 'index'])
+    router.post('permissions', [PermissionsController, 'store'])
+    router.put('permissions/:id', [PermissionsController, 'update'])
+    router.delete('permissions/:id', [PermissionsController, 'destroy'])
+  })
+  .prefix('/api/v1')
+  .use([middleware.auth(), middleware.role({ roles: ['ADMIN'] })])
 
 /*
 |--------------------------------------------------------------------------
