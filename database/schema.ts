@@ -125,6 +125,17 @@ export class ProductSchema extends BaseModel {
   declare unitPrice: number
 }
 
+export class RateLimitSchema extends BaseModel {
+  static $columns = ['expire', 'key', 'points'] as const
+  $columns = RateLimitSchema.$columns
+  @column()
+  declare expire: bigint | number | null
+  @column({ isPrimary: true })
+  declare key: string
+  @column()
+  declare points: number
+}
+
 export class RolePermissionSchema extends BaseModel {
   static $columns = ['permissionId', 'roleId'] as const
   $columns = RolePermissionSchema.$columns
