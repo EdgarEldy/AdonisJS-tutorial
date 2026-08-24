@@ -1,71 +1,58 @@
 import app from '@adonisjs/core/services/app'
+import env from '#start/env'
+import pg from 'pg'
 import { defineConfig } from '@adonisjs/lucid'
+
+// NOTE: node-postgres returns BIGINT (OID 20) columns as strings by
+// default, since a bigint can exceed Number.MAX_SAFE_INTEGER. Every model
+// in this project types its bigIncrements primary keys and bigInteger
+// foreign keys as `number`, matching the README's own examples, so this
+// parser is registered here, before any pg connection is opened, to keep
+// ids and foreign keys as actual numbers rather than strings at runtime.
+pg.types.setTypeParser(20, (value: string) => Number.parseInt(value, 10))
 
 const dbConfig = defineConfig({
   /**
    * Default connection used for all queries.
    */
-  connection: 'sqlite',
+  connection: 'pg',
 
   connections: {
     /**
-     * SQLite connection (default).
+     * PostgreSQL connection (default). Credentials are read from the typed
+     * env service so the app refuses to boot with an incomplete .env file.
      */
-    sqlite: {
-      client: 'better-sqlite3',
-
+    pg: {
+      client: 'pg',
       connection: {
-        filename: app.tmpPath('db.sqlite3'),
+        host: env.get('DB_HOST'),
+        port: env.get('DB_PORT'),
+        user: env.get('DB_USER'),
+        password: env.get('DB_PASSWORD'),
+        database: env.get('DB_DATABASE'),
       },
-
-      /**
-       * Required by Knex for SQLite defaults.
-       */
-      useNullAsDefault: true,
-
       migrations: {
-        /**
-         * Sort migration files naturally by filename.
-         */
         naturalSort: true,
-
-        /**
-         * Paths containing migration files.
-         */
         paths: ['database/migrations'],
       },
-
-      schemaGeneration: {
-        /**
-         * Enable schema generation from Lucid models.
-         */
-        enabled: true,
-
-        /**
-         * Custom schema rules file paths.
-         */
-        rulesPaths: ['./database/schema_rules.js'],
-      },
+      debug: app.inDev,
     },
 
     /**
-     * PostgreSQL connection.
-     * Install package to switch: npm install pg
+     * SQLite connection.
+     * Kept as a documented alternative, no schema generation configured
+     * since the project standardizes on PostgreSQL migrations.
      */
-    // pg: {
-    //   client: 'pg',
+    // sqlite: {
+    //   client: 'better-sqlite3',
     //   connection: {
-    //     host: env.get('DB_HOST'),
-    //     port: env.get('DB_PORT'),
-    //     user: env.get('DB_USER'),
-    //     password: env.get('DB_PASSWORD'),
-    //     database: env.get('DB_DATABASE'),
+    //     filename: app.tmpPath('db.sqlite3'),
     //   },
+    //   useNullAsDefault: true,
     //   migrations: {
     //     naturalSort: true,
     //     paths: ['database/migrations'],
     //   },
-    //   debug: app.inDev,
     // },
 
     /**

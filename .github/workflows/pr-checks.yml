@@ -72,6 +72,12 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # Migrations must run against the fresh service container before any
+      # test touches the database, unit specs under tests/unit/database and
+      # tests/unit/models assume the schema already exists.
+      - name: Run migrations
+        run: node ace migration:run --force
+
       # Functional tests start the AdonisJS HTTP server and issue real requests.
       # Future browser / E2E suites will use @japa/browser-client with Playwright
       # in headless-chromium mode; install steps will be added when that suite

@@ -12,9 +12,7 @@
 |
 */
 
-import { middleware } from '#start/kernel'
 import router from '@adonisjs/core/services/router'
-import { controllers } from '#generated/controllers'
 
 // Lazy import — AdonisJS resolves the module on the first matching request
 const HealthController = () => import('#controllers/health_controller')
@@ -32,26 +30,10 @@ router.get('/api/v1/health', [HealthController, 'index'])
 
 /*
 |--------------------------------------------------------------------------
-| API v1 — scaffold routes (replaced in feature/auth)
+| API v1 — resource routes
 |--------------------------------------------------------------------------
+|
+| Auth, categories, products, customers and orders routes are added by
+| their respective feature branches, starting with feature/auth.
+|
 */
-router
-  .group(() => {
-    router
-      .group(() => {
-        router.post('signup', [controllers.NewAccount, 'store'])
-        router.post('login', [controllers.AccessTokens, 'store'])
-      })
-      .prefix('auth')
-      .as('auth')
-
-    router
-      .group(() => {
-        router.get('profile', [controllers.Profile, 'show'])
-        router.post('logout', [controllers.AccessTokens, 'destroy'])
-      })
-      .prefix('account')
-      .as('profile')
-      .use(middleware.auth())
-  })
-  .prefix('/api/v1')

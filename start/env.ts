@@ -43,4 +43,14 @@ export default await Env.create(new URL('../', import.meta.url), {
   LIMITER_STORE: Env.schema.enum(['database', 'redis'] as const),
   THROTTLE_AUTH_MAX: Env.schema.number(),
   THROTTLE_AUTH_WINDOW: Env.schema.number(),
+
+  // Test seed credentials
+  // NOTE: declared optional (not required) so the app still boots against
+  // .env.development, which does not define them. UserSeeder falls back to
+  // the same values .env.test hardcodes when these are absent, so seeding
+  // works the same way in development as it does in the test database.
+  TEST_ADMIN_EMAIL: Env.schema.string.optional(),
+  TEST_ADMIN_PASSWORD: Env.schema.string.optional(),
+  TEST_USER_EMAIL: Env.schema.string.optional(),
+  TEST_USER_PASSWORD: Env.schema.string.optional(),
 })
