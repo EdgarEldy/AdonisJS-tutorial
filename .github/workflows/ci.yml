@@ -65,5 +65,8 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Run migrations
+        run: node ace migration:run --force
+
       - name: Run tests
         run: npm test
