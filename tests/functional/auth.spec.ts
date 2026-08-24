@@ -14,6 +14,7 @@
 import { test } from '@japa/runner'
 import db from '@adonisjs/lucid/services/db'
 import env from '#start/env'
+import ActivationToken from '#models/activation_token'
 import { loginAsSeeded, ensureRole, ensureSeededUser } from '#tests/helpers/auth_helper'
 
 test.group('Auth - full lifecycle (register -> activate -> login -> me -> logout)', (group) => {
@@ -44,7 +45,20 @@ test.group('Auth - full lifecycle (register -> activate -> login -> me -> logout
     })
     registerResponse.assertStatus(201)
     registerResponse.assertBodyContains({ success: true })
-    const activationToken = registerResponse.body().data.activationToken as string
+    const userId = registerResponse.body().data.id as number
+    assert.isNumber(userId)
+
+    // The activation token is no longer echoed in the response: it is
+    // emailed via ActivationMail against Mailhog now that a real mailer is
+    // wired up on this branch. The row is still persisted exactly as
+    // before, so it is looked up directly by the new user's id, most
+    // recent first, the same way any other out-of-band consumer of the
+    // token would have to.
+    const tokenRow = await ActivationToken.query()
+      .where('userId', userId)
+      .orderBy('createdAt', 'desc')
+      .firstOrFail()
+    const activationToken = tokenRow.token
     assert.isString(activationToken)
 
     // 2. activate
