@@ -2,6 +2,7 @@ import { errors as authErrors } from '@adonisjs/auth'
 import { createError } from '@adonisjs/core/exceptions'
 import hash from '@adonisjs/core/services/hash'
 import db from '@adonisjs/lucid/services/db'
+import mail from '@adonisjs/mail/services/main'
 import { DateTime } from 'luxon'
 import type { Infer } from '@vinejs/vine/types'
 
@@ -11,6 +12,8 @@ import ActivationToken from '#models/activation_token'
 import BlacklistedToken from '#models/blacklisted_token'
 import PasswordResetToken from '#models/password_reset_token'
 import { signJwt, type JwtPayload } from '#auth/jwt_guard'
+import ActivationMail from '#mails/activation_mail'
+import PasswordResetMail from '#mails/password_reset_mail'
 import type { registerSchema, loginSchema, resetPasswordSchema } from '#validators/auth_validator'
 
 type RegisterPayload = Infer<typeof registerSchema>
@@ -72,15 +75,24 @@ const E_INVALID_RESET_TOKEN = createError(
 export default class AuthService {
   /**
    * Creates the user (password hashing happens in User's @beforeSave hook,
-   * never here), assigns the default USER role, and issues an activation
-   * token.
+   * never here), assigns the default USER role, issues an activation
+   * token, and emails it via ActivationMail.
    *
-   * The raw activation token is returned to the caller rather than only
-   * being persisted. There is no mail provider wired up on this branch,
-   * so returning the token is the documented placeholder for delivering
-   * it by email, the same pattern `forgotPassword` uses below. Without
-   * this, the register -> activate -> login functional test flow the
-   * README's own task list requires would have no way to obtain the token.
+   * The raw activation token is no longer returned to the caller. A real
+   * mailer is wired up on this branch (SMTP against Mailhog), so echoing
+   * the token in the HTTP response would defeat the point of delivering it
+   * out of band: anyone who could read the API response could also
+   * activate the account, which is exactly the class of leak email
+   * delivery exists to close. The token is still persisted on
+   * ActivationToken exactly as before; only its delivery channel changed.
+   *
+   * The mail send happens after the transaction commits, not inside it.
+   * Sending mail is not transactional (there is no way to "roll back" an
+   * SMTP call), so keeping it outside the `db.transaction` block means a
+   * mail delivery failure can never mark an otherwise-successful
+   * registration as failed, and a transaction rollback (for example a
+   * unique-email race) can never result in an activation email for a user
+   * row that was never actually committed.
    *
    * All three writes run inside a single transaction. Without one, a
    * crash or a thrown error between `User.create` and `ActivationToken.create`
@@ -89,11 +101,11 @@ export default class AuthService {
    * unique email constraint. A transaction makes the whole registration
    * succeed or fail as one unit instead.
    */
-  async register(data: RegisterPayload) {
+  async register(data: RegisterPayload): Promise<User> {
     const userRole = await Role.findByOrFail('roleName', DEFAULT_USER_ROLE)
 
-    return db.transaction(async (trx) => {
-      const user = await User.create(
+    const { user, token } = await db.transaction(async (trx) => {
+      const newUser = await User.create(
         {
           firstName: data.firstName,
           lastName: data.lastName,
@@ -105,19 +117,23 @@ export default class AuthService {
         { client: trx }
       )
 
-      await user.related('roles').attach([userRole.id])
+      await newUser.related('roles').attach([userRole.id])
 
       const activationToken = await ActivationToken.create(
         {
-          userId: user.id,
+          userId: newUser.id,
           token: crypto.randomUUID(),
           expiresAt: DateTime.now().plus({ hours: ACTIVATION_TOKEN_TTL_HOURS }),
         },
         { client: trx }
       )
 
-      return { user, activationToken: activationToken.token }
+      return { user: newUser, token: activationToken.token }
     })
+
+    await mail.send(new ActivationMail(user, token))
+
+    return user
   }
 
   /**
@@ -214,10 +230,13 @@ export default class AuthService {
   }
 
   /**
-   * Issues a PasswordResetToken and returns the raw token. As with
-   * `register`'s activation token, there is no mail provider on this
-   * branch, so returning the raw value is the documented placeholder for
-   * email delivery.
+   * Issues a PasswordResetToken and emails it via PasswordResetMail. As
+   * with `register`'s activation token, the raw value is no longer
+   * returned to the caller now that a real mailer is wired up; the token
+   * is still persisted on PasswordResetToken exactly as before, only its
+   * delivery channel and this method's return value changed. Returning
+   * void rather than the user keeps the controller from having anything
+   * meaningful to echo back beyond a confirmation message.
    *
    * NOTE: a production system would return a generic success response
    * regardless of whether the email exists, to avoid leaking which
@@ -225,7 +244,7 @@ export default class AuthService {
    * an unknown email) instead, favouring explicit, testable behaviour
    * over that hardening, consistent with the rest of this branch's scope.
    */
-  async forgotPassword(email: string) {
+  async forgotPassword(email: string): Promise<void> {
     const user = await User.findByOrFail('email', email)
 
     const resetToken = await PasswordResetToken.create({
@@ -235,7 +254,7 @@ export default class AuthService {
       expiryDate: DateTime.now().plus({ hours: PASSWORD_RESET_TOKEN_TTL_HOURS }),
     })
 
-    return resetToken.token
+    await mail.send(new PasswordResetMail(user, resetToken.token))
   }
 
   /**
