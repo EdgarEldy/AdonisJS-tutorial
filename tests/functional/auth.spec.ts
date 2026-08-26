@@ -103,30 +103,41 @@ test.group('Auth - middleware smoke test (AuthMiddleware + RoleMiddleware)', (gr
     await db.rollbackGlobalTransaction()
   })
 
-  test('protected stub route returns 401 without a token', async ({ client }) => {
-    const response = await client.get('/api/v1/_stub/protected')
+  // feature/categories added the first real ADMIN-protected route, so this
+  // group now exercises GET /auth/me (auth only, no role) and
+  // POST /categories (auth + ADMIN) instead of the temporary
+  // /api/v1/_stub/* routes, which are removed from start/routes.ts.
+
+  test('auth-only route returns 401 without a token', async ({ client }) => {
+    const response = await client.get('/api/v1/auth/me')
     response.assertStatus(401)
   })
 
-  test('protected stub route returns 200 with a valid USER token', async ({ client }) => {
+  test('auth-only route returns 200 with a valid USER token', async ({ client }) => {
     const token = await loginAsSeeded(client, 'user')
 
-    const response = await client.get('/api/v1/_stub/protected').bearerToken(token)
+    const response = await client.get('/api/v1/auth/me').bearerToken(token)
     response.assertStatus(200)
   }).timeout(10000)
 
-  test('admin-protected stub route returns 403 for a USER token', async ({ client }) => {
+  test('admin-protected route returns 403 for a USER token', async ({ client }) => {
     const token = await loginAsSeeded(client, 'user')
 
-    const response = await client.get('/api/v1/_stub/protected-admin').bearerToken(token)
+    const response = await client
+      .post('/api/v1/categories')
+      .json({ categoryName: `Smoke ${crypto.randomUUID()}` })
+      .bearerToken(token)
     response.assertStatus(403)
   }).timeout(10000)
 
-  test('admin-protected stub route returns 200 for an ADMIN token', async ({ client }) => {
+  test('admin-protected route returns 201 for an ADMIN token', async ({ client }) => {
     const token = await loginAsSeeded(client, 'admin')
 
-    const response = await client.get('/api/v1/_stub/protected-admin').bearerToken(token)
-    response.assertStatus(200)
+    const response = await client
+      .post('/api/v1/categories')
+      .json({ categoryName: `Smoke ${crypto.randomUUID()}` })
+      .bearerToken(token)
+    response.assertStatus(201)
   }).timeout(10000)
 })
 
