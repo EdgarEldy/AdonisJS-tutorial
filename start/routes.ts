@@ -25,6 +25,7 @@ const AuthController = () => import('#controllers/auth_controller')
 const UsersController = () => import('#controllers/users_controller')
 const RolesController = () => import('#controllers/roles_controller')
 const PermissionsController = () => import('#controllers/permissions_controller')
+const CategoriesController = () => import('#controllers/categories_controller')
 
 /*
 |--------------------------------------------------------------------------
@@ -136,6 +137,30 @@ router
     router.delete('permissions/:id', [PermissionsController, 'destroy'])
   })
   .prefix('/api/v1')
+  .use([middleware.auth(), middleware.role({ roles: ['ADMIN'] })])
+
+/*
+|--------------------------------------------------------------------------
+| Categories
+|--------------------------------------------------------------------------
+|
+| The list and detail routes are public, matching the README's Endpoints
+| table for this branch. The three mutation routes are ADMIN only, applied
+| individually at route declaration time with
+| .use([middleware.auth(), middleware.role({ roles: ['ADMIN'] })]), the
+| exact pattern the README's own code sample for this branch shows.
+|
+*/
+router.get('/api/v1/categories', [CategoriesController, 'index'])
+router.get('/api/v1/categories/:id', [CategoriesController, 'show'])
+router
+  .post('/api/v1/categories', [CategoriesController, 'store'])
+  .use([middleware.auth(), middleware.role({ roles: ['ADMIN'] })])
+router
+  .put('/api/v1/categories/:id', [CategoriesController, 'update'])
+  .use([middleware.auth(), middleware.role({ roles: ['ADMIN'] })])
+router
+  .delete('/api/v1/categories/:id', [CategoriesController, 'destroy'])
   .use([middleware.auth(), middleware.role({ roles: ['ADMIN'] })])
 
 /*
