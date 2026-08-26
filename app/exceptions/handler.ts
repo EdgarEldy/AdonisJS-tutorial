@@ -14,6 +14,7 @@
 import app from '@adonisjs/core/services/app'
 import { type HttpContext, ExceptionHandler } from '@adonisjs/core/http'
 import { errors as vineErrors } from '@vinejs/vine'
+import { fail } from '#helpers/api_response'
 
 export default class HttpExceptionHandler extends ExceptionHandler {
   /**
@@ -46,33 +47,21 @@ export default class HttpExceptionHandler extends ExceptionHandler {
 
     // VineJS validation errors: preserve structured field messages
     if (error instanceof vineErrors.E_VALIDATION_ERROR) {
-      return response.status(422).json({
-        success: false,
-        message: 'Validation failed',
-        errors: error.messages,
-        timestamp: new Date().toISOString(),
-        path: request.url(),
-      })
+      return response.status(422).json(fail('Validation failed', request.url(), error.messages))
     }
 
     // AdonisJS HTTP exceptions carry a numeric status code
     const httpError = error as { status?: number; message?: string }
-    if (httpError?.status && typeof httpError.status === 'number') {
-      return response.status(httpError.status).json({
-        success: false,
-        message: httpError.message ?? 'An error occurred',
-        timestamp: new Date().toISOString(),
-        path: request.url(),
-      })
+    if (typeof httpError?.status === 'number') {
+      return response
+        .status(httpError.status)
+        .json(fail(httpError.message ?? 'An error occurred', request.url()))
     }
 
     // Unexpected server errors — mask details in production
-    return response.status(500).json({
-      success: false,
-      message: app.inProduction ? 'Internal server error' : String(error),
-      timestamp: new Date().toISOString(),
-      path: request.url(),
-    })
+    return response
+      .status(500)
+      .json(fail(app.inProduction ? 'Internal server error' : String(error), request.url()))
   }
 
   /**
