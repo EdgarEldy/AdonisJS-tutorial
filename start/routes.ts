@@ -27,6 +27,7 @@ const PermissionsController = () => import('#controllers/permissions_controller'
 const CategoriesController = () => import('#controllers/categories_controller')
 const ProductsController = () => import('#controllers/products_controller')
 const CustomersController = () => import('#controllers/customers_controller')
+const OrdersController = () => import('#controllers/orders_controller')
 
 /*
 |--------------------------------------------------------------------------
@@ -237,4 +238,33 @@ router
   .use([middleware.auth(), middleware.role({ roles: ['ADMIN'] })])
 router
   .delete('/api/v1/customers/:id', [CustomersController, 'destroy'])
+  .use([middleware.auth(), middleware.role({ roles: ['ADMIN'] })])
+router.get('/api/v1/customers/:id/orders', [OrdersController, 'forCustomer']).use(middleware.auth())
+
+/*
+|--------------------------------------------------------------------------
+| Orders
+|--------------------------------------------------------------------------
+|
+| Every orders route requires authentication, matching the README's
+| Endpoints table and Authorization Rules for this branch, the same
+| "authenticated for reads, ADMIN for writes" split the customers routes
+| above already use. The nested GET /api/v1/customers/:id/orders route is
+| declared just above, right after the customers routes, since it belongs
+| to the customers resource path even though it is served by
+| OrdersController. The :id param here is already covered by the
+| router.where('id', router.matchers.number()) matcher declared at the top
+| of this file.
+|
+*/
+router.get('/api/v1/orders', [OrdersController, 'index']).use(middleware.auth())
+router.get('/api/v1/orders/:id', [OrdersController, 'show']).use(middleware.auth())
+router
+  .post('/api/v1/orders', [OrdersController, 'store'])
+  .use([middleware.auth(), middleware.role({ roles: ['ADMIN'] })])
+router
+  .put('/api/v1/orders/:id', [OrdersController, 'update'])
+  .use([middleware.auth(), middleware.role({ roles: ['ADMIN'] })])
+router
+  .delete('/api/v1/orders/:id', [OrdersController, 'destroy'])
   .use([middleware.auth(), middleware.role({ roles: ['ADMIN'] })])
