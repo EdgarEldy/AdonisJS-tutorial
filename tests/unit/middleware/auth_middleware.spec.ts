@@ -26,12 +26,12 @@ import AuthMiddleware from '#middleware/auth_middleware'
 import User from '#models/user'
 import BlacklistedToken from '#models/blacklisted_token'
 
-function fakeCtx(jti: string) {
+function fakeCtx(jti: string, user: User) {
   const responses: { unauthorized?: unknown } = {}
 
   const ctx = {
     auth: {
-      authenticateUsing: async () => {},
+      authenticateUsing: async () => user,
       use: () => ({ payload: { jti } }),
     },
     request: {
@@ -78,7 +78,7 @@ test.group('AuthMiddleware - blacklisted jti rejection', (group) => {
 
     const middleware = new AuthMiddleware()
     let nextCalled = false
-    const { ctx, responses } = fakeCtx(jti)
+    const { ctx, responses } = fakeCtx(jti, user)
 
     await middleware.handle(ctx, async () => {
       nextCalled = true
@@ -90,9 +90,18 @@ test.group('AuthMiddleware - blacklisted jti rejection', (group) => {
   }).timeout(10000)
 
   test('calls next() when the jti is not blacklisted', async ({ assert }) => {
+    const user = await User.create({
+      firstName: 'Active',
+      lastName: 'User',
+      email: `active-${crypto.randomUUID()}@example.com`,
+      password: 'Password1!',
+      enabled: true,
+      accountLocked: false,
+    })
+
     const middleware = new AuthMiddleware()
     let nextCalled = false
-    const { ctx, responses } = fakeCtx(crypto.randomUUID())
+    const { ctx, responses } = fakeCtx(crypto.randomUUID(), user)
 
     await middleware.handle(ctx, async () => {
       nextCalled = true
@@ -100,5 +109,30 @@ test.group('AuthMiddleware - blacklisted jti rejection', (group) => {
 
     assert.isTrue(nextCalled)
     assert.isUndefined(responses.unauthorized)
+  }).timeout(10000)
+
+  test('rejects a request for a user who is disabled or locked, even with a valid non-blacklisted jti', async ({
+    assert,
+  }) => {
+    const user = await User.create({
+      firstName: 'Locked',
+      lastName: 'Out',
+      email: `locked-${crypto.randomUUID()}@example.com`,
+      password: 'Password1!',
+      enabled: true,
+      accountLocked: true,
+    })
+
+    const middleware = new AuthMiddleware()
+    let nextCalled = false
+    const { ctx, responses } = fakeCtx(crypto.randomUUID(), user)
+
+    await middleware.handle(ctx, async () => {
+      nextCalled = true
+    })
+
+    assert.isFalse(nextCalled)
+    assert.isDefined(responses.unauthorized)
+    assert.deepInclude(responses.unauthorized, { success: false })
   }).timeout(10000)
 })
