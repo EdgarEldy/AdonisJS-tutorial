@@ -1,9 +1,8 @@
 import { createError } from '@adonisjs/core/exceptions'
-import type { LucidRow, ModelPaginatorContract } from '@adonisjs/lucid/types/model'
 import type { Infer } from '@vinejs/vine/types'
 
 import Permission from '#models/permission'
-import type { PageResponse } from '#helpers/page_response'
+import { toPageResponse, type PageResponse } from '#helpers/page_response'
 import type {
   createPermissionSchema,
   updatePermissionSchema,
@@ -17,20 +16,6 @@ const E_PERMISSION_IN_USE = createError(
   'E_PERMISSION_IN_USE',
   409
 )
-
-// Same pagination mapping as users_service.ts; see that file's own comment
-// on why this is duplicated per-service rather than shared.
-function toPageResponse<T extends LucidRow>(paginator: ModelPaginatorContract<T>): PageResponse<T> {
-  return {
-    items: paginator.all(),
-    total: paginator.total,
-    page: paginator.currentPage,
-    limit: paginator.perPage,
-    totalPages: paginator.lastPage,
-    hasNext: paginator.hasMorePages,
-    hasPrevious: paginator.currentPage > 1,
-  }
-}
 
 /**
  * Owns every read and write to the `permissions` table from the
