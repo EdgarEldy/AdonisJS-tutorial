@@ -7,14 +7,21 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: adonisjs_tutorial_test
     ports:
-      - "5433:5432"
+      - '5433:5432'
     volumes:
       - postgres_test_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
       interval: 10s
       timeout: 5s
       retries: 5
+
+  mailhog_test:
+    image: mailhog/mailhog
+    restart: unless-stopped
+    ports:
+      - '1026:1025'
+      - '8026:8025'
 
 volumes:
   postgres_test_data:
