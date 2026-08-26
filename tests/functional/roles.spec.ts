@@ -16,12 +16,30 @@ import { test } from '@japa/runner'
 import db from '@adonisjs/lucid/services/db'
 
 import Permission from '#models/permission'
-import { loginAsSeeded, ensureSeededUser } from '#tests/helpers/auth_helper'
+import { loginAsSeeded, ensureRole, ensureSeededUser } from '#tests/helpers/auth_helper'
+
+/**
+ * `response.body()` on a literal-path match (POST and GET both resolve to
+ * /api/v1/roles) is typed against the union of every action on that route,
+ * so TypeScript cannot narrow `.data` to the specific shape a given call
+ * actually returns. This cast is only needed at the two create-role call
+ * sites below; every other `.body()` access in this file hits a route with
+ * a dynamic `:id` segment, which Tuyau does not resolve to a literal type.
+ */
+function body(response: { body(): unknown }): any {
+  return response.body()
+}
 
 test.group('Roles admin - CRUD lifecycle', (group) => {
   group.setup(async () => {
     await db.beginGlobalTransaction()
     await ensureSeededUser('admin')
+    // The second test registers a fresh account through the public auth
+    // flow to have a real user to assign the role under test to.
+    // AuthService.register looks up the USER role by name, so it must
+    // exist in this transaction the same way users.spec.ts already
+    // ensures it, ensureSeededUser('admin') alone only guarantees ADMIN.
+    await ensureRole('USER')
   })
 
   group.teardown(async () => {
@@ -41,9 +59,9 @@ test.group('Roles admin - CRUD lifecycle', (group) => {
       .json({ roleName })
       .bearerToken(adminToken)
     createResponse.assertStatus(201)
-    assert.properties(createResponse.body(), ['success', 'message', 'data', 'timestamp'])
-    const roleId = createResponse.body().data.id as number
-    assert.equal(createResponse.body().data.roleName, roleName)
+    assert.properties(body(createResponse), ['success', 'message', 'data', 'timestamp'])
+    const roleId = body(createResponse).data.id as number
+    assert.equal(body(createResponse).data.roleName, roleName)
 
     // GET /api/v1/roles
     const listResponse = await client
@@ -103,9 +121,7 @@ test.group('Roles admin - CRUD lifecycle', (group) => {
     const deleteResponse = await client.delete(`/api/v1/roles/${roleId}`).bearerToken(adminToken)
     deleteResponse.assertStatus(200)
 
-    const afterDeleteResponse = await client
-      .get(`/api/v1/roles/${roleId}`)
-      .bearerToken(adminToken)
+    const afterDeleteResponse = await client.get(`/api/v1/roles/${roleId}`).bearerToken(adminToken)
     afterDeleteResponse.assertStatus(404)
   }).timeout(20000)
 
@@ -121,7 +137,7 @@ test.group('Roles admin - CRUD lifecycle', (group) => {
       .json({ roleName })
       .bearerToken(adminToken)
     createResponse.assertStatus(201)
-    const roleId = createResponse.body().data.id as number
+    const roleId = body(createResponse).data.id as number
 
     const email = `rolebusy-${crypto.randomUUID()}@example.com`
     const registerResponse = await client.post('/api/v1/auth/register').json({
@@ -133,18 +149,13 @@ test.group('Roles admin - CRUD lifecycle', (group) => {
     registerResponse.assertStatus(201)
     const userId = registerResponse.body().data.id as number
 
-    await client
-      .post(`/api/v1/users/${userId}/roles`)
-      .json({ roleId })
-      .bearerToken(adminToken)
+    await client.post(`/api/v1/users/${userId}/roles`).json({ roleId }).bearerToken(adminToken)
 
     const blockedResponse = await client.delete(`/api/v1/roles/${roleId}`).bearerToken(adminToken)
     blockedResponse.assertStatus(409)
     assert.isFalse(blockedResponse.body().success)
 
-    await client
-      .delete(`/api/v1/users/${userId}/roles/${roleId}`)
-      .bearerToken(adminToken)
+    await client.delete(`/api/v1/users/${userId}/roles/${roleId}`).bearerToken(adminToken)
 
     const deleteResponse = await client.delete(`/api/v1/roles/${roleId}`).bearerToken(adminToken)
     deleteResponse.assertStatus(200)
