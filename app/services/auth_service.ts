@@ -1,6 +1,7 @@
 import { errors as authErrors } from '@adonisjs/auth'
 import { createError } from '@adonisjs/core/exceptions'
 import hash from '@adonisjs/core/services/hash'
+import logger from '@adonisjs/core/services/logger'
 import db from '@adonisjs/lucid/services/db'
 import mail from '@adonisjs/mail/services/main'
 import { DateTime } from 'luxon'
@@ -51,6 +52,7 @@ const E_ACCOUNT_NOT_ACTIVATED = createError(
   403
 )
 const E_ACCOUNT_LOCKED = createError('Account is locked', 'E_ACCOUNT_LOCKED', 403)
+const E_EMAIL_TAKEN = createError('Email is already registered', 'E_EMAIL_TAKEN', 409)
 const E_TOKEN_ALREADY_USED = createError('Token has already been used', 'E_TOKEN_ALREADY_USED', 400)
 const E_TOKEN_EXPIRED = createError('Token has expired', 'E_TOKEN_EXPIRED', 400)
 const E_INVALID_RESET_TOKEN = createError(
@@ -102,14 +104,26 @@ export default class AuthService {
    * succeed or fail as one unit instead.
    */
   async register(data: RegisterPayload): Promise<User> {
+    const email = data.email.toLowerCase()
     const userRole = await Role.findByOrFail('roleName', DEFAULT_USER_ROLE)
+
+    // Pre-checked here rather than letting the migration's UNIQUE constraint
+    // reject the insert: a raw Postgres constraint error has no .status
+    // property, so app/exceptions/handler.ts's generic branch would turn a
+    // routine duplicate registration into an unhandled 500 instead of a
+    // clean 409. This is the same class of race UsersService.update already
+    // guards against, just at creation time instead of update time.
+    const existing = await User.findBy('email', email)
+    if (existing) {
+      throw new E_EMAIL_TAKEN()
+    }
 
     const { user, token } = await db.transaction(async (trx) => {
       const newUser = await User.create(
         {
           firstName: data.firstName,
           lastName: data.lastName,
-          email: data.email,
+          email,
           password: data.password,
           enabled: false,
           accountLocked: false,
@@ -131,7 +145,17 @@ export default class AuthService {
       return { user: newUser, token: activationToken.token }
     })
 
-    await mail.send(new ActivationMail(user, token))
+    // The user, role attachment and activation token are already committed
+    // at this point. A mail delivery failure (SMTP down, Mailhog
+    // unreachable) must not turn an otherwise-successful registration into
+    // a 500 the client would retry into an E_EMAIL_TAKEN conflict against
+    // an account they cannot yet activate. Logged and swallowed instead;
+    // the token is still in the database for a future resend flow to use.
+    try {
+      await mail.send(new ActivationMail(user, token))
+    } catch (error) {
+      logger.error({ err: error, userId: user.id }, 'failed to send activation email')
+    }
 
     return user
   }
@@ -168,7 +192,7 @@ export default class AuthService {
    * an email address is registered.
    */
   async login(data: LoginPayload) {
-    const user = await User.query().where('email', data.email).first()
+    const user = await User.query().where('email', data.email.toLowerCase()).first()
 
     if (!user || !user.password || !(await hash.verify(user.password, data.password))) {
       throw new authErrors.E_INVALID_CREDENTIALS('Invalid email or password')
@@ -245,7 +269,7 @@ export default class AuthService {
    * over that hardening, consistent with the rest of this branch's scope.
    */
   async forgotPassword(email: string): Promise<void> {
-    const user = await User.findByOrFail('email', email)
+    const user = await User.findByOrFail('email', email.toLowerCase())
 
     const resetToken = await PasswordResetToken.create({
       userId: user.id,
@@ -254,7 +278,14 @@ export default class AuthService {
       expiryDate: DateTime.now().plus({ hours: PASSWORD_RESET_TOKEN_TTL_HOURS }),
     })
 
-    await mail.send(new PasswordResetMail(user, resetToken.token))
+    // Same reasoning as register(): the reset token is already committed,
+    // so a mail delivery failure here must not surface as a 500 for a
+    // request that otherwise succeeded.
+    try {
+      await mail.send(new PasswordResetMail(user, resetToken.token))
+    } catch (error) {
+      logger.error({ err: error, userId: user.id }, 'failed to send password reset email')
+    }
   }
 
   /**
