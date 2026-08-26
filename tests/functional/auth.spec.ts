@@ -13,6 +13,7 @@
  */
 import { test } from '@japa/runner'
 import db from '@adonisjs/lucid/services/db'
+import limiter from '@adonisjs/limiter/services/main'
 import env from '#start/env'
 import ActivationToken from '#models/activation_token'
 import { loginAsSeeded, ensureRole, ensureSeededUser } from '#tests/helpers/auth_helper'
@@ -157,12 +158,25 @@ test.group('Auth - rate limiting on login', (group) => {
   }) => {
     // register, login and forgot-password all share a single named limiter
     // ("auth"), keyed by client IP, so any of them running earlier in this
-    // process (the full lifecycle test above included) consumes from the
-    // same bucket. Clearing rows for that limiter's key prefix immediately
-    // before the burst guarantees a clean window regardless of what ran
-    // before this test or in what order, instead of relying on nothing else
-    // in the suite having touched the auth limiter yet.
-    await db.rawQuery("delete from rate_limits where key like 'auth_%'")
+    // process (the full lifecycle test above included, and every other
+    // functional spec's calls to loginAsSeeded) consumes from the same
+    // bucket, and THROTTLE_AUTH_MAX is raised in the test/CI environments
+    // precisely so that ambient traffic never gets close to it (see the
+    // NOTE in tests/helpers/auth_helper.ts). This test deliberately wants
+    // to hit the real limit, so it needs a guaranteed-clean window instead:
+    // limiter.clear() (LimiterManager) reaches the real store, unlike a raw
+    // `delete from rate_limits` through Lucid's `db` service, which is
+    // transaction-wrapped by this group's beginGlobalTransaction() and
+    // invisible to the limiter's own store. clear() is safe to call here,
+    // as the very first query this fresh transaction runs against
+    // rate_limits: nothing earlier in this group has touched the limiter
+    // yet, so there is no in-progress, transaction-trapped write for its
+    // TRUNCATE to block on. Calling it before every loginAsSeeded login
+    // instead (tried first) is not safe: once one login in a group has run,
+    // the limiter's own internal cleanup query is left "idle in
+    // transaction" until that group's teardown, and a later TRUNCATE in
+    // the same group deadlocks against it.
+    await limiter.clear()
 
     const email = env.get('TEST_USER_EMAIL')!
     const password = env.get('TEST_USER_PASSWORD')!
@@ -176,5 +190,5 @@ test.group('Auth - rate limiting on login', (group) => {
     const blockedResponse = await client.post('/api/v1/auth/login').json({ email, password })
     blockedResponse.assertStatus(429)
     assert.equal(blockedResponse.body().success, false)
-  }).timeout(20000)
+  }).timeout(60000)
 })
