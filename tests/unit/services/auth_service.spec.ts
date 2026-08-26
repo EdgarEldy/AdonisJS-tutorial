@@ -117,9 +117,7 @@ test.group('AuthService - register / activate', (group) => {
     const reloadedUser = await User.findOrFail(user.id)
     assert.isTrue(reloadedUser.enabled)
 
-    const reloadedToken = await ActivationToken.query()
-      .where('token', tokenRow.token)
-      .firstOrFail()
+    const reloadedToken = await ActivationToken.query().where('token', tokenRow.token).firstOrFail()
     assert.isNotNull(reloadedToken.validatedAt)
   }).timeout(10000)
 })

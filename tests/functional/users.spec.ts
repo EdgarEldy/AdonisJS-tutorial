@@ -119,9 +119,7 @@ test.group('Users admin - CRUD lifecycle', (group) => {
     deleteResponse.assertStatus(200)
     assert.properties(deleteResponse.body(), ['success', 'message', 'data', 'timestamp'])
 
-    const afterDeleteResponse = await client
-      .get(`/api/v1/users/${userId}`)
-      .bearerToken(adminToken)
+    const afterDeleteResponse = await client.get(`/api/v1/users/${userId}`).bearerToken(adminToken)
     afterDeleteResponse.assertStatus(404)
   }).timeout(20000)
 })

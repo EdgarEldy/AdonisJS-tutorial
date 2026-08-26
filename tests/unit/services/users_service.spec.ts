@@ -52,10 +52,7 @@ test.group('UsersService - assignRole idempotency', (group) => {
 
     assert.isTrue(updated.roles.some((r) => r.id === role.id))
 
-    const pivotRows = await db
-      .from('role_user')
-      .where('user_id', user.id)
-      .where('role_id', role.id)
+    const pivotRows = await db.from('role_user').where('user_id', user.id).where('role_id', role.id)
     assert.lengthOf(pivotRows, 1)
   }).timeout(10000)
 
@@ -71,10 +68,7 @@ test.group('UsersService - assignRole idempotency', (group) => {
       1
     )
 
-    const pivotRows = await db
-      .from('role_user')
-      .where('user_id', user.id)
-      .where('role_id', role.id)
+    const pivotRows = await db.from('role_user').where('user_id', user.id).where('role_id', role.id)
     assert.lengthOf(pivotRows, 1)
   }).timeout(10000)
 })
