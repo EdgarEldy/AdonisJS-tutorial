@@ -1,10 +1,9 @@
 import { createError } from '@adonisjs/core/exceptions'
-import type { LucidRow, ModelPaginatorContract } from '@adonisjs/lucid/types/model'
 import type { Infer } from '@vinejs/vine/types'
 
 import Role from '#models/role'
 import Permission from '#models/permission'
-import type { PageResponse } from '#helpers/page_response'
+import { toPageResponse, type PageResponse } from '#helpers/page_response'
 import type { createRoleSchema, updateRoleSchema } from '#validators/role_validator'
 
 type CreateRolePayload = Infer<typeof createRoleSchema>
@@ -15,20 +14,7 @@ const E_ROLE_IN_USE = createError(
   'E_ROLE_IN_USE',
   409
 )
-
-// Same pagination mapping as users_service.ts; see that file's own comment
-// on why this is duplicated per-service rather than shared.
-function toPageResponse<T extends LucidRow>(paginator: ModelPaginatorContract<T>): PageResponse<T> {
-  return {
-    items: paginator.all(),
-    total: paginator.total,
-    page: paginator.currentPage,
-    limit: paginator.perPage,
-    totalPages: paginator.lastPage,
-    hasNext: paginator.hasMorePages,
-    hasPrevious: paginator.currentPage > 1,
-  }
-}
+const E_ROLE_NAME_TAKEN = createError('Role name is already in use', 'E_ROLE_NAME_TAKEN', 409)
 
 /**
  * Owns every read and write to the `roles` table and the `role_user` /
@@ -46,12 +32,35 @@ export default class RolesService {
     return Role.query().where('id', id).preload('permissions').firstOrFail()
   }
 
+  /**
+   * Pre-checks roleName uniqueness rather than letting the migration's
+   * UNIQUE constraint reject the insert: a raw Postgres constraint error has
+   * no .status property, so app/exceptions/handler.ts's generic branch
+   * would turn a routine duplicate-name conflict into an unhandled 500
+   * instead of a clean 409, the same class of gap UsersService.update
+   * already guards against for email.
+   */
   async create(data: CreateRolePayload): Promise<Role> {
+    const existing = await Role.findBy('roleName', data.roleName)
+    if (existing) {
+      throw new E_ROLE_NAME_TAKEN()
+    }
     return Role.create(data)
   }
 
   async update(id: number, data: UpdateRolePayload): Promise<Role> {
     const role = await Role.findOrFail(id)
+
+    if (data.roleName && data.roleName !== role.roleName) {
+      const existing = await Role.query()
+        .where('roleName', data.roleName)
+        .whereNot('id', id)
+        .first()
+      if (existing) {
+        throw new E_ROLE_NAME_TAKEN()
+      }
+    }
+
     role.merge(data)
     await role.save()
     return role
@@ -85,7 +94,7 @@ export default class RolesService {
     const alreadyAssigned = role.permissions.some((p) => p.id === permission.id)
     if (!alreadyAssigned) {
       await role.related('permissions').attach([permission.id])
-      await role.load('permissions')
+      role.permissions.push(permission)
     }
 
     return role
@@ -94,8 +103,18 @@ export default class RolesService {
   /** Idempotent, same reasoning as UsersService.revokeRole. */
   async revokePermission(id: number, permissionId: number): Promise<Role> {
     const role = await Role.findOrFail(id)
-    await role.related('permissions').detach([permissionId])
     await role.load('permissions')
+    await role.related('permissions').detach([permissionId])
+
+    // role.permissions is Lucid's opaque ManyToMany<typeof Permission> at
+    // the type level, array-like at runtime but not reassignable, so the
+    // detached permission is spliced out in place rather than filtered
+    // into a new array.
+    const index = role.permissions.findIndex((permission) => permission.id === permissionId)
+    if (index !== -1) {
+      role.permissions.splice(index, 1)
+    }
+
     return role
   }
 }
