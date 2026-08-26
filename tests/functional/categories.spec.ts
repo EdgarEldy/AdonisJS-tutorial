@@ -20,21 +20,7 @@ import db from '@adonisjs/lucid/services/db'
 
 import Product from '#models/product'
 import { loginAsSeeded, ensureSeededUser } from '#tests/helpers/auth_helper'
-
-/**
- * `response.body()` on a literal-path match (POST and GET both resolve to
- * /api/v1/categories) is typed against the union of every action on that
- * route, so TypeScript cannot narrow `.data` to the specific shape a given
- * call actually returns. Same workaround roles.spec.ts and
- * permissions.spec.ts already use.
- */
-function body(response: { body(): unknown }): any {
-  return response.body()
-}
-
-function uniqueName(prefix: string) {
-  return `${prefix}_${crypto.randomUUID()}`
-}
+import { body, uniqueName } from '#tests/helpers/test_utils'
 
 test.group('Categories - CRUD lifecycle', (group) => {
   group.setup(async () => {
