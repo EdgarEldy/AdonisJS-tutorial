@@ -15,6 +15,8 @@
 import { middleware } from '#start/kernel'
 import router from '@adonisjs/core/services/router'
 import { controllers } from '#generated/controllers'
+import AutoSwagger from 'adonis-autoswagger'
+import swagger from '#config/swagger'
 
 // Lazy import — AdonisJS resolves the module on the first matching request
 const HealthController = () => import('#controllers/health_controller')
@@ -29,6 +31,25 @@ const HealthController = () => import('#controllers/health_controller')
 |
 */
 router.get('/api/v1/health', [HealthController, 'index'])
+
+/*
+|--------------------------------------------------------------------------
+| API documentation
+|--------------------------------------------------------------------------
+|
+| /swagger returns the generated OpenAPI spec in YAML; /docs renders it
+| through Swagger UI. Both are public, documentation is not a protected
+| resource, and adonis-autoswagger's own default `ignore` list already
+| excludes these two paths from appearing in the spec they generate.
+|
+*/
+router.get('/swagger', async () => {
+  return AutoSwagger.default.docs(router.toJSON(), swagger)
+})
+
+router.get('/docs', async () => {
+  return AutoSwagger.default.ui('/swagger', swagger)
+})
 
 /*
 |--------------------------------------------------------------------------
