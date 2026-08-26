@@ -28,6 +28,25 @@ const CategoriesController = () => import('#controllers/categories_controller')
 
 /*
 |--------------------------------------------------------------------------
+| Global route param matchers
+|--------------------------------------------------------------------------
+|
+| Without this, a non-numeric :id/:roleId/:permissionId (for example
+| GET /api/v1/categories/abc) reaches the service layer as NaN, which
+| Postgres rejects as a raw "invalid input syntax for type bigint" error
+| with no .status property, falling through the exception handler's
+| generic 500 branch instead of a clean 404. router.matchers.number()
+| restricts these params to digit strings before a route ever matches, so
+| a non-numeric value 404s at the routing layer, and casts the matched
+| value to an actual number, not just a numeric string.
+|
+*/
+router.where('id', router.matchers.number())
+router.where('roleId', router.matchers.number())
+router.where('permissionId', router.matchers.number())
+
+/*
+|--------------------------------------------------------------------------
 | Health check
 |--------------------------------------------------------------------------
 |
