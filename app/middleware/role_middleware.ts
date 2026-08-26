@@ -1,5 +1,6 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
+import { fail } from '#helpers/api_response'
 
 /**
  * Role-based access control middleware.
@@ -34,12 +35,7 @@ export default class RoleMiddleware {
 
     const hasRole = user.roles.some((role) => options.roles.includes(role.roleName))
     if (!hasRole) {
-      return ctx.response.forbidden({
-        success: false,
-        message: 'Insufficient role',
-        timestamp: new Date().toISOString(),
-        path: ctx.request.url(),
-      })
+      return ctx.response.forbidden(fail('Insufficient role', ctx.request.url()))
     }
 
     return next()
