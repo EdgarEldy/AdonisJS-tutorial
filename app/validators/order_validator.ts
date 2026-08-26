@@ -8,7 +8,12 @@ import vine from '@vinejs/vine'
  * -> products.id, NOT NULL`, `quantity INT NOT NULL, > 0`. `positive()` on
  * quantity enforces the "> 0" constraint at the validation layer, the same
  * role `unitPrice: vine.number().positive()` plays in
- * createProductSchema. `customerId` and `productId` are only checked for
+ * createProductSchema. `withoutDecimals()` on all three fields matches their
+ * column types (bigint FKs, an integer quantity): without it, a value like
+ * 1.5 would pass validation and only fail as a raw, unhandled Postgres
+ * "invalid input syntax for type integer" error once it reached the
+ * database, caught during code review. `customerId` and `productId` are
+ * only checked for
  * shape/type here; whether those ids actually refer to existing rows is a
  * FK existence check that belongs in OrdersService.create/update, matching
  * ProductsService.create's own categoryId existence check. `total` is not
@@ -18,9 +23,9 @@ import vine from '@vinejs/vine'
  */
 export const createOrderSchema = vine.compile(
   vine.object({
-    customerId: vine.number().positive(),
-    productId: vine.number().positive(),
-    quantity: vine.number().positive(),
+    customerId: vine.number().positive().withoutDecimals(),
+    productId: vine.number().positive().withoutDecimals(),
+    quantity: vine.number().positive().withoutDecimals(),
   })
 )
 
@@ -31,9 +36,9 @@ export const createOrderSchema = vine.compile(
  */
 export const updateOrderSchema = vine.compile(
   vine.object({
-    customerId: vine.number().positive().optional(),
-    productId: vine.number().positive().optional(),
-    quantity: vine.number().positive().optional(),
+    customerId: vine.number().positive().withoutDecimals().optional(),
+    productId: vine.number().positive().withoutDecimals().optional(),
+    quantity: vine.number().positive().withoutDecimals().optional(),
   })
 )
 
@@ -47,7 +52,7 @@ export const updateOrderSchema = vine.compile(
  */
 export const orderFilterSchema = vine.compile(
   vine.object({
-    customerId: vine.number().positive().optional(),
-    productId: vine.number().positive().optional(),
+    customerId: vine.number().positive().withoutDecimals().optional(),
+    productId: vine.number().positive().withoutDecimals().optional(),
   })
 )
