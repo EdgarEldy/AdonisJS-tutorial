@@ -101,20 +101,26 @@ test.group('OrdersService - CRUD', (group) => {
     const product = await createProduct(5)
     const customer = await createCustomer()
 
+    // emitter is a process-wide singleton, so restore() must run even if
+    // an assertion below throws; otherwise every later test in this
+    // process, in this file or any other, keeps emitting into the fake
+    // buffer instead of really firing events, silently masking a real
+    // event-emission regression in whatever runs afterward.
     const fakeEmitter = emitter.fake()
+    try {
+      const order = await ordersService.create({
+        customerId: customer.id,
+        productId: product.id,
+        quantity: 2,
+      })
 
-    const order = await ordersService.create({
-      customerId: customer.id,
-      productId: product.id,
-      quantity: 2,
-    })
-
-    fakeEmitter.assertEmitted(
-      OrderCreated,
-      (event) => event.data.orderId === order.id && event.data.customerId === customer.id
-    )
-
-    emitter.restore()
+      fakeEmitter.assertEmitted(
+        OrderCreated,
+        (event) => event.data.orderId === order.id && event.data.customerId === customer.id
+      )
+    } finally {
+      emitter.restore()
+    }
   }).timeout(10000)
 
   test('update recomputes total when quantity changes', async ({ assert }) => {
