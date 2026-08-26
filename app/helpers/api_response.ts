@@ -46,3 +46,27 @@ export function respond<T>(data: T, message = 'OK') {
     timestamp: new Date().toISOString(),
   }
 }
+
+/**
+ * Constructs a failed ApiResponse envelope.
+ *
+ * Was previously hand-built independently at five call sites (three in the
+ * global exception handler, one each in AuthMiddleware and RoleMiddleware),
+ * all constructing the same `{ success: false, message, timestamp, path }`
+ * shape by hand. This is the error-side counterpart to `respond()`, kept in
+ * the same file since both exist to guarantee one envelope shape across the
+ * whole API surface.
+ *
+ * @param message - A short human-readable description of what failed.
+ * @param path - The request path, for error tracing.
+ * @param errors - Field-level validation messages, when applicable.
+ */
+export function fail(message: string, path: string, errors?: string[]) {
+  return {
+    success: false,
+    message,
+    ...(errors ? { errors } : {}),
+    timestamp: new Date().toISOString(),
+    path,
+  }
+}
