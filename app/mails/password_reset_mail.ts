@@ -1,6 +1,7 @@
 import { BaseMail } from '@adonisjs/mail'
 import env from '#start/env'
 import type User from '#models/user'
+import { escapeHtml } from '#mails/escape_html'
 
 /**
  * Sent by AuthService.forgotPassword after a PasswordResetToken row is
@@ -41,7 +42,7 @@ export default class PasswordResetMail extends BaseMail {
           `This link expires in 1 hour. If you did not request this, you can ignore this email.`
       )
       .html(
-        `<p>Hi ${this.user.firstName},</p>` +
+        `<p>Hi ${escapeHtml(this.user.firstName)},</p>` +
           `<p>We received a request to reset your password. Click the link below to choose a new one:</p>` +
           `<p><a href="${resetUrl}">${resetUrl}</a></p>` +
           `<p>This link expires in 1 hour. If you did not request this, you can ignore this email.</p>`
