@@ -19,7 +19,7 @@ export default await Env.create(new URL('../', import.meta.url), {
   LOG_LEVEL: Env.schema.string(),
 
   // App
-  APP_KEY: Env.schema.string(),
+  APP_KEY: Env.schema.secret(),
   APP_URL: Env.schema.string({ format: 'url', tld: false }),
 
   // Session
@@ -33,7 +33,7 @@ export default await Env.create(new URL('../', import.meta.url), {
   DB_DATABASE: Env.schema.string(),
 
   // Auth
-  JWT_SECRET: Env.schema.string(),
+  JWT_SECRET: Env.schema.secret(),
   JWT_EXPIRY: Env.schema.string(),
 
   // Hashing
@@ -53,4 +53,11 @@ export default await Env.create(new URL('../', import.meta.url), {
   TEST_ADMIN_PASSWORD: Env.schema.string.optional(),
   TEST_USER_EMAIL: Env.schema.string.optional(),
   TEST_USER_PASSWORD: Env.schema.string.optional(),
+
+  // Mail
+  MAIL_MAILER: Env.schema.enum(['smtp'] as const),
+  MAIL_FROM_NAME: Env.schema.string(),
+  MAIL_FROM_ADDRESS: Env.schema.string(),
+  SMTP_HOST: Env.schema.string({ format: 'host' }),
+  SMTP_PORT: Env.schema.number(),
 })
