@@ -8,6 +8,7 @@ export const controllers = {
   Categories: () => import('#controllers/categories_controller'),
   Health: () => import('#controllers/health_controller'),
   Permissions: () => import('#controllers/permissions_controller'),
+  Products: () => import('#controllers/products_controller'),
   Roles: () => import('#controllers/roles_controller'),
   Users: () => import('#controllers/users_controller'),
 }
