@@ -17,18 +17,7 @@ import db from '@adonisjs/lucid/services/db'
 
 import Permission from '#models/permission'
 import { loginAsSeeded, ensureRole, ensureSeededUser } from '#tests/helpers/auth_helper'
-
-/**
- * `response.body()` on a literal-path match (POST and GET both resolve to
- * /api/v1/roles) is typed against the union of every action on that route,
- * so TypeScript cannot narrow `.data` to the specific shape a given call
- * actually returns. This cast is only needed at the two create-role call
- * sites below; every other `.body()` access in this file hits a route with
- * a dynamic `:id` segment, which Tuyau does not resolve to a literal type.
- */
-function body(response: { body(): unknown }): any {
-  return response.body()
-}
+import { body } from '#tests/helpers/test_utils'
 
 test.group('Roles admin - CRUD lifecycle', (group) => {
   group.setup(async () => {

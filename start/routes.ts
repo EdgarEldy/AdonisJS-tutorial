@@ -16,7 +16,6 @@ import router from '@adonisjs/core/services/router'
 import AutoSwagger from 'adonis-autoswagger'
 import { middleware } from '#start/kernel'
 import { authThrottle } from '#start/limiter'
-import { respond } from '#helpers/api_response'
 import swagger from '#config/swagger'
 
 // Lazy import — AdonisJS resolves the module on the first matching request
@@ -25,6 +24,26 @@ const AuthController = () => import('#controllers/auth_controller')
 const UsersController = () => import('#controllers/users_controller')
 const RolesController = () => import('#controllers/roles_controller')
 const PermissionsController = () => import('#controllers/permissions_controller')
+const CategoriesController = () => import('#controllers/categories_controller')
+
+/*
+|--------------------------------------------------------------------------
+| Global route param matchers
+|--------------------------------------------------------------------------
+|
+| Without this, a non-numeric :id/:roleId/:permissionId (for example
+| GET /api/v1/categories/abc) reaches the service layer as NaN, which
+| Postgres rejects as a raw "invalid input syntax for type bigint" error
+| with no .status property, falling through the exception handler's
+| generic 500 branch instead of a clean 404. router.matchers.number()
+| restricts these params to digit strings before a route ever matches, so
+| a non-numeric value 404s at the routing layer, and casts the matched
+| value to an actual number, not just a numeric string.
+|
+*/
+router.where('id', router.matchers.number())
+router.where('roleId', router.matchers.number())
+router.where('permissionId', router.matchers.number())
 
 /*
 |--------------------------------------------------------------------------
@@ -140,28 +159,24 @@ router
 
 /*
 |--------------------------------------------------------------------------
-| Temporary middleware smoke-test stubs (feature/auth only)
+| Categories
 |--------------------------------------------------------------------------
 |
-| feature/auth's task list requires a functional test proving AuthMiddleware
-| and RoleMiddleware actually reject/allow requests (401 with no token, 200
-| with a valid USER token, 403 for USER / 200 for ADMIN behind role('ADMIN')).
-| No real protected resource route exists yet - categories, products,
-| customers and orders are all later branches - so these two routes exist
-| solely to give that test something to hit.
-|
-| DELETE both routes once feature/categories adds its first ADMIN-protected
-| route; they carry no business meaning of their own.
+| The list and detail routes are public, matching the README's Endpoints
+| table for this branch. The three mutation routes are ADMIN only, applied
+| individually at route declaration time with
+| .use([middleware.auth(), middleware.role({ roles: ['ADMIN'] })]), the
+| exact pattern the README's own code sample for this branch shows.
 |
 */
+router.get('/api/v1/categories', [CategoriesController, 'index'])
+router.get('/api/v1/categories/:id', [CategoriesController, 'show'])
 router
-  .get('/api/v1/_stub/protected', ({ response }) => {
-    return response.ok(respond({ ok: true }, 'Protected stub reached'))
-  })
-  .use(middleware.auth())
-
+  .post('/api/v1/categories', [CategoriesController, 'store'])
+  .use([middleware.auth(), middleware.role({ roles: ['ADMIN'] })])
 router
-  .get('/api/v1/_stub/protected-admin', ({ response }) => {
-    return response.ok(respond({ ok: true }, 'Protected admin stub reached'))
-  })
+  .put('/api/v1/categories/:id', [CategoriesController, 'update'])
+  .use([middleware.auth(), middleware.role({ roles: ['ADMIN'] })])
+router
+  .delete('/api/v1/categories/:id', [CategoriesController, 'destroy'])
   .use([middleware.auth(), middleware.role({ roles: ['ADMIN'] })])

@@ -30,6 +30,11 @@ export type ScannedRoutes = {
     'permissions.store': { paramsTuple?: []; params?: {} }
     'permissions.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'permissions.destroy': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'categories.index': { paramsTuple?: []; params?: {} }
+    'categories.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'categories.store': { paramsTuple?: []; params?: {} }
+    'categories.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'categories.destroy': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
   }
   GET: {
     'health.index': { paramsTuple?: []; params?: {} }
@@ -39,6 +44,8 @@ export type ScannedRoutes = {
     'roles.index': { paramsTuple?: []; params?: {} }
     'roles.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'permissions.index': { paramsTuple?: []; params?: {} }
+    'categories.index': { paramsTuple?: []; params?: {} }
+    'categories.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
   }
   HEAD: {
     'health.index': { paramsTuple?: []; params?: {} }
@@ -48,6 +55,8 @@ export type ScannedRoutes = {
     'roles.index': { paramsTuple?: []; params?: {} }
     'roles.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'permissions.index': { paramsTuple?: []; params?: {} }
+    'categories.index': { paramsTuple?: []; params?: {} }
+    'categories.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
   }
   POST: {
     'auth.register': { paramsTuple?: []; params?: {} }
@@ -61,11 +70,13 @@ export type ScannedRoutes = {
     'roles.store': { paramsTuple?: []; params?: {} }
     'roles.assign_permission': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'permissions.store': { paramsTuple?: []; params?: {} }
+    'categories.store': { paramsTuple?: []; params?: {} }
   }
   PUT: {
     'users.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'roles.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'permissions.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'categories.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
   }
   DELETE: {
     'users.destroy': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
@@ -73,6 +84,7 @@ export type ScannedRoutes = {
     'roles.destroy': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'roles.revoke_permission': { paramsTuple: [ParamValue,ParamValue]; params: {'id': ParamValue,'permissionId': ParamValue} }
     'permissions.destroy': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'categories.destroy': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
   }
 }
 declare module '@adonisjs/core/types/http' {

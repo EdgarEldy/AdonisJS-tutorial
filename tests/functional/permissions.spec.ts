@@ -15,18 +15,7 @@ import { test } from '@japa/runner'
 import db from '@adonisjs/lucid/services/db'
 
 import { loginAsSeeded, ensureSeededUser } from '#tests/helpers/auth_helper'
-
-/**
- * `response.body()` is typed against the union of every action registered
- * on a matching literal route (for example both PermissionsController.index
- * and .store resolve to /api/v1/permissions), so TypeScript cannot narrow
- * `.data` to the specific shape a given call actually returns. This helper
- * casts to `any` at the single point every access in this file goes
- * through, rather than repeating the same cast at every property read.
- */
-function body(response: { body(): unknown }): any {
-  return response.body()
-}
+import { body } from '#tests/helpers/test_utils'
 
 test.group('Permissions admin - CRUD lifecycle', (group) => {
   group.setup(async () => {
