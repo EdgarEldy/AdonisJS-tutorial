@@ -35,7 +35,9 @@ function fakeCtx(jti: string, user: User) {
       use: () => ({ payload: { jti } }),
     },
     request: {
-      url: () => '/api/v1/_stub/protected',
+      // Arbitrary placeholder path for the fail() envelope's `path` field;
+      // this fake context never issues a real HTTP request.
+      url: () => '/api/v1/auth/me',
     },
     response: {
       unauthorized: (body: unknown) => {
