@@ -11,6 +11,14 @@ import vine from '@vinejs/vine'
  *
  * NOTE: this decision (the exact complexity rule) is not spelled out in
  * the README and is left to this validator's judgment.
+ *
+ * `maxLength(128)` on every password field below is a deliberate cap, not
+ * an arbitrary one: config/hash.ts hashes with Argon2id, whose cost scales
+ * with input size, and the register/reset-password endpoints are public.
+ * Without a bound, a client could submit a multi-megabyte password field
+ * (config/bodyparser.ts allows large JSON bodies) and force expensive
+ * hashing work per request, a cost-amplification vector authThrottle's
+ * request-count limit alone does not prevent.
  */
 const passwordComplexity = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/
 
@@ -27,7 +35,7 @@ export const registerSchema = vine.compile(
     firstName: vine.string().trim().minLength(1).maxLength(50),
     lastName: vine.string().trim().minLength(1).maxLength(100),
     email: vine.string().trim().maxLength(100).email(),
-    password: vine.string().minLength(8).regex(passwordComplexity),
+    password: vine.string().minLength(8).maxLength(128).regex(passwordComplexity),
   })
 )
 
@@ -43,7 +51,7 @@ export const registerSchema = vine.compile(
 export const loginSchema = vine.compile(
   vine.object({
     email: vine.string().trim().email(),
-    password: vine.string(),
+    password: vine.string().maxLength(128),
   })
 )
 
@@ -84,6 +92,6 @@ export const forgotPasswordSchema = vine.compile(
 export const resetPasswordSchema = vine.compile(
   vine.object({
     token: vine.string().trim().minLength(1),
-    password: vine.string().minLength(8).regex(passwordComplexity),
+    password: vine.string().minLength(8).maxLength(128).regex(passwordComplexity),
   })
 )
