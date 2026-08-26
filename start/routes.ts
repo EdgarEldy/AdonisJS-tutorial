@@ -16,7 +16,6 @@ import router from '@adonisjs/core/services/router'
 import AutoSwagger from 'adonis-autoswagger'
 import { middleware } from '#start/kernel'
 import { authThrottle } from '#start/limiter'
-import { respond } from '#helpers/api_response'
 import swagger from '#config/swagger'
 
 // Lazy import — AdonisJS resolves the module on the first matching request
@@ -161,32 +160,4 @@ router
   .use([middleware.auth(), middleware.role({ roles: ['ADMIN'] })])
 router
   .delete('/api/v1/categories/:id', [CategoriesController, 'destroy'])
-  .use([middleware.auth(), middleware.role({ roles: ['ADMIN'] })])
-
-/*
-|--------------------------------------------------------------------------
-| Temporary middleware smoke-test stubs (feature/auth only)
-|--------------------------------------------------------------------------
-|
-| feature/auth's task list requires a functional test proving AuthMiddleware
-| and RoleMiddleware actually reject/allow requests (401 with no token, 200
-| with a valid USER token, 403 for USER / 200 for ADMIN behind role('ADMIN')).
-| No real protected resource route exists yet - categories, products,
-| customers and orders are all later branches - so these two routes exist
-| solely to give that test something to hit.
-|
-| DELETE both routes once feature/categories adds its first ADMIN-protected
-| route; they carry no business meaning of their own.
-|
-*/
-router
-  .get('/api/v1/_stub/protected', ({ response }) => {
-    return response.ok(respond({ ok: true }, 'Protected stub reached'))
-  })
-  .use(middleware.auth())
-
-router
-  .get('/api/v1/_stub/protected-admin', ({ response }) => {
-    return response.ok(respond({ ok: true }, 'Protected admin stub reached'))
-  })
   .use([middleware.auth(), middleware.role({ roles: ['ADMIN'] })])
