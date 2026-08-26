@@ -1,37 +1,14 @@
 import { createError } from '@adonisjs/core/exceptions'
-import type { LucidRow, ModelPaginatorContract } from '@adonisjs/lucid/types/model'
 import type { Infer } from '@vinejs/vine/types'
 
 import User from '#models/user'
 import Role from '#models/role'
-import type { PageResponse } from '#helpers/page_response'
+import { toPageResponse, type PageResponse } from '#helpers/page_response'
 import type { updateUserSchema } from '#validators/user_validator'
 
 type UpdateUserPayload = Infer<typeof updateUserSchema>
 
 const E_EMAIL_TAKEN = createError('Email is already in use by another user', 'E_EMAIL_TAKEN', 409)
-
-/**
- * Maps a Lucid ModelPaginatorContract onto this project's stable
- * PageResponse<T> envelope. Duplicated identically in roles_service.ts and
- * permissions_service.ts rather than factored into a shared helper: the
- * README's project structure only lists app/helpers/api_response.ts and
- * app/helpers/page_response.ts, no shared pagination mapper, and
- * page_response.ts's own docstring already shows this exact mapping as the
- * pattern every service is expected to repeat, the same way the later
- * category/product/customer/order services will each repeat it too.
- */
-function toPageResponse<T extends LucidRow>(paginator: ModelPaginatorContract<T>): PageResponse<T> {
-  return {
-    items: paginator.all(),
-    total: paginator.total,
-    page: paginator.currentPage,
-    limit: paginator.perPage,
-    totalPages: paginator.lastPage,
-    hasNext: paginator.hasMorePages,
-    hasPrevious: paginator.currentPage > 1,
-  }
-}
 
 /**
  * Owns every read and write to the `users` table from the administration
@@ -68,11 +45,15 @@ export default class UsersService {
   async update(id: number, data: UpdateUserPayload): Promise<User> {
     const user = await User.findOrFail(id)
 
-    if (data.email && data.email !== user.email) {
-      const existing = await User.query().where('email', data.email).whereNot('id', id).first()
-      if (existing) {
-        throw new E_EMAIL_TAKEN()
+    if (data.email) {
+      const email = data.email.toLowerCase()
+      if (email !== user.email) {
+        const existing = await User.query().where('email', email).whereNot('id', id).first()
+        if (existing) {
+          throw new E_EMAIL_TAKEN()
+        }
       }
+      data = { ...data, email }
     }
 
     user.merge(data)
@@ -100,7 +81,10 @@ export default class UsersService {
     const alreadyAssigned = user.roles.some((r) => r.id === role.id)
     if (!alreadyAssigned) {
       await user.related('roles').attach([role.id])
-      await user.load('roles')
+      // attach() only adds the one pivot row already known here, so the
+      // freshly loaded roles array plus this role is exactly what a reload
+      // would return, without a second round trip to prove it.
+      user.roles.push(role)
     }
 
     return user
@@ -121,8 +105,17 @@ export default class UsersService {
    */
   async revokeRole(id: number, roleId: number): Promise<User> {
     const user = await User.findOrFail(id)
-    await user.related('roles').detach([roleId])
     await user.load('roles')
+    await user.related('roles').detach([roleId])
+
+    // user.roles is Lucid's opaque ManyToMany<typeof Role> at the type
+    // level, array-like at runtime but not reassignable, so the detached
+    // role is spliced out in place rather than filtered into a new array.
+    const index = user.roles.findIndex((role) => role.id === roleId)
+    if (index !== -1) {
+      user.roles.splice(index, 1)
+    }
+
     return user
   }
 }
