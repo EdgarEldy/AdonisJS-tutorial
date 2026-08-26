@@ -665,7 +665,11 @@ export default await Env.create(new URL('../', import.meta.url), {
 - [ ] Implement global exception handler in `app/exceptions/handler.ts` (wraps all errors in `ApiResponse` shape with `success: false`)
 - [ ] Implement `ResponseTimeMiddleware` and register it globally in `start/kernel.ts`
 - [ ] Register `auth` and `role` as named middleware in `start/kernel.ts` (stubs - implementation comes in `feature/auth`)
-- [ ] Configure `adonis-autoswagger` for API documentation
+- [ ] Configure `adonis-autoswagger` for API documentation, expose `/swagger` and `/docs`
+- [ ] Install every dependency the whole project's Tech Stack needs, not just this branch's own: `pg`, `@adonisjs/bouncer`, `@adonisjs/limiter`, `@adonisjs/mail`, `@adonisjs/cache`, `argon2`, `jose`, `adonis-autoswagger`, so no later branch needs a mid-branch install
+- [ ] Configure `@adonisjs/bouncer`, `@adonisjs/limiter` (database store) and `@adonisjs/mail` (SMTP against Mailhog) with their base scaffolding; the app-specific wiring (the JWT guard, Argon2 as the active hasher, real policies) still belongs to the branch that owns that behavior
+- [ ] Configure `@adonisjs/cache` with an in-memory L1 layer and a database L2 layer, for `feature/categories` to use on its list endpoint
+- [ ] Add Mailhog to both `docker-compose.yml` and `docker-compose.test.yml`, and to both CI workflows
 - [ ] Add `GET /api/v1/health` health-check route
 - [ ] Set up GitHub Actions `ci.yml` and `pr-checks.yml`
 - [ ] Functional test: `GET /api/v1/health` returns 200 with `ApiResponse` shape
