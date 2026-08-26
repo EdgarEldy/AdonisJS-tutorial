@@ -3,4 +3,6 @@
  * DO NOT EDIT manually
  */
 
-export const listeners = {}
+export const listeners = {
+  SendOrderNotification: () => import('#listeners/send_order_notification'),
+}
