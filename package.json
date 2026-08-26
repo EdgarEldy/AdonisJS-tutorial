@@ -61,6 +61,7 @@
   "dependencies": {
     "@adonisjs/auth": "^10.1.0",
     "@adonisjs/bouncer": "^4.0.1",
+    "@adonisjs/cache": "^2.1.0",
     "@adonisjs/core": "^7.4.0",
     "@adonisjs/cors": "^3.0.0",
     "@adonisjs/limiter": "^3.0.1",
@@ -71,6 +72,7 @@
     "@japa/api-client": "^3.2.1",
     "@tuyau/core": "^1.2.2",
     "@vinejs/vine": "^4.4.0",
+    "adonis-autoswagger": "^3.73.0",
     "argon2": "^0.45.1",
     "better-sqlite3": "^13.0.3",
     "jose": "^6.2.10",
