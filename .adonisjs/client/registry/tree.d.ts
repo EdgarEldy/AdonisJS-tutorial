@@ -38,4 +38,11 @@ export interface ApiDefinition {
     update: typeof routes['permissions.update']
     destroy: typeof routes['permissions.destroy']
   }
+  categories: {
+    index: typeof routes['categories.index']
+    show: typeof routes['categories.show']
+    store: typeof routes['categories.store']
+    update: typeof routes['categories.update']
+    destroy: typeof routes['categories.destroy']
+  }
 }
