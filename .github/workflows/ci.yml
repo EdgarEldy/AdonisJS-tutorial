@@ -25,6 +25,11 @@ env:
   LIMITER_STORE: database
   THROTTLE_AUTH_MAX: 5
   THROTTLE_AUTH_WINDOW: 60
+  MAIL_MAILER: smtp
+  MAIL_FROM_NAME: AdonisJS Tutorial
+  MAIL_FROM_ADDRESS: no-reply@adonisjs-tutorial.test
+  SMTP_HOST: 127.0.0.1
+  SMTP_PORT: 1025
 
 jobs:
   ci:
@@ -45,6 +50,12 @@ jobs:
           --health-interval 5s
           --health-timeout 3s
           --health-retries 5
+
+      mailhog:
+        image: mailhog/mailhog
+        ports:
+          - 1025:1025
+          - 8025:8025
 
     steps:
       - name: Checkout repository
