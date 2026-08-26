@@ -8,6 +8,7 @@ import {
   updateRoleSchema,
   assignPermissionSchema,
 } from '#validators/role_validator'
+import { paginationSchema } from '#validators/pagination_validator'
 
 /**
  * Thin HTTP layer over RolesService. Every route this controller serves is
@@ -19,9 +20,8 @@ export default class RolesController {
   constructor(private rolesService: RolesService) {}
 
   async index({ request, response }: HttpContext) {
-    const page = Number(request.input('page', 1))
-    const limit = Number(request.input('limit', 10))
-    const result = await this.rolesService.findAll(page, limit)
+    const { page, limit } = await request.validateUsing(paginationSchema)
+    const result = await this.rolesService.findAll(page ?? 1, limit ?? 10)
     return response.ok(respond(result))
   }
 
