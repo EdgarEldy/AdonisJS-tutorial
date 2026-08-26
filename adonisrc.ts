@@ -72,15 +72,25 @@ export default defineConfig({
   |
   */
   preloads: [
+    // No separate entry for start/kernel.ts: routes.ts is the only file
+    // that imports it (`import { middleware } from '#start/kernel'`), so
+    // its own static import already guarantees kernel.ts is fully
+    // evaluated before routes.ts's body runs, per normal ES module
+    // dependency ordering. A prior version of this array preloaded kernel
+    // and routes as two independent entries; since every entry here is
+    // started concurrently (Promise.all over the whole array, not run in
+    // sequence), that gave kernel.ts two competing load paths and produced
+    // an intermittent "Cannot access 'middleware' before initialization"
+    // TDZ error whenever the loader's two concurrent requests for the same
+    // module raced. Removing the redundant entry removes the race, since
+    // there is now exactly one load path for kernel.ts left.
     () => import('#start/routes'),
-    () => import('#start/kernel'),
     () => import('#start/validator'),
     // Event -> listener bindings (OrderCreated -> SendOrderNotification).
-    // Loaded after routes/kernel/validator, matching the README's own
-    // preloads sample ordering: routes and middleware need to exist first,
-    // and listener registration has no dependency on the validator preload
-    // either way, so appending it last is the least disruptive place to
-    // add it to the array that is actually already here.
+    // Loaded last: listener registration has no dependency on kernel,
+    // routes or the validator preload either way, so appending it here is
+    // the least disruptive place to add it to the array that is already
+    // here.
     () => import('#start/events'),
   ],
 
