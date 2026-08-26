@@ -24,4 +24,40 @@ export default await Env.create(new URL('../', import.meta.url), {
 
   // Session
   SESSION_DRIVER: Env.schema.enum(['cookie', 'memory', 'database'] as const),
+
+  // Database
+  DB_HOST: Env.schema.string({ format: 'host' }),
+  DB_PORT: Env.schema.number(),
+  DB_USER: Env.schema.string(),
+  DB_PASSWORD: Env.schema.string.optional(),
+  DB_DATABASE: Env.schema.string(),
+
+  // Auth
+  JWT_SECRET: Env.schema.secret(),
+  JWT_EXPIRY: Env.schema.string(),
+
+  // Hashing
+  HASH_DRIVER: Env.schema.enum(['argon', 'bcrypt'] as const),
+
+  // Rate limiting
+  LIMITER_STORE: Env.schema.enum(['database', 'redis'] as const),
+  THROTTLE_AUTH_MAX: Env.schema.number(),
+  THROTTLE_AUTH_WINDOW: Env.schema.number(),
+
+  // Test seed credentials
+  // NOTE: declared optional (not required) so the app still boots against
+  // .env.development, which does not define them. UserSeeder falls back to
+  // the same values .env.test hardcodes when these are absent, so seeding
+  // works the same way in development as it does in the test database.
+  TEST_ADMIN_EMAIL: Env.schema.string.optional(),
+  TEST_ADMIN_PASSWORD: Env.schema.string.optional(),
+  TEST_USER_EMAIL: Env.schema.string.optional(),
+  TEST_USER_PASSWORD: Env.schema.string.optional(),
+
+  // Mail
+  MAIL_MAILER: Env.schema.enum(['smtp'] as const),
+  MAIL_FROM_NAME: Env.schema.string(),
+  MAIL_FROM_ADDRESS: Env.schema.string(),
+  SMTP_HOST: Env.schema.string({ format: 'host' }),
+  SMTP_PORT: Env.schema.number(),
 })

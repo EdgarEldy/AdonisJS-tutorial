@@ -1,0 +1,99 @@
+name: PR Checks
+
+on:
+  pull_request:
+    branches:
+      - develop
+
+# Environment variables required by start/env.ts schema validation.
+# Sensitive values (APP_KEY, JWT_SECRET) should be stored as GitHub secrets.
+# Non-sensitive CI defaults are inlined here for transparency.
+env:
+  NODE_ENV: test
+  PORT: 3333
+  HOST: 0.0.0.0
+  # error level suppresses info/debug noise so test output is readable
+  LOG_LEVEL: error
+  # CI-only test keys: not used in production, safe to commit to a tutorial repo
+  APP_KEY: adonisjs_tutorial_ci_test_key_01
+  APP_URL: http://localhost:3333
+  SESSION_DRIVER: memory
+  DB_HOST: 127.0.0.1
+  DB_PORT: 5432
+  DB_USER: postgres
+  DB_PASSWORD: postgres
+  DB_DATABASE: adonisjs_tutorial_test
+  JWT_SECRET: adonisjs_tutorial_ci_jwt_secret
+  JWT_EXPIRY: 1d
+  HASH_DRIVER: argon
+  LIMITER_STORE: database
+  THROTTLE_AUTH_MAX: 100
+  THROTTLE_AUTH_WINDOW: 60
+  MAIL_MAILER: smtp
+  MAIL_FROM_NAME: AdonisJS Tutorial
+  MAIL_FROM_ADDRESS: no-reply@adonisjs-tutorial.test
+  SMTP_HOST: 127.0.0.1
+  SMTP_PORT: 1025
+
+jobs:
+  checks:
+    name: Typecheck, Lint & Test
+    runs-on: ubuntu-latest
+
+    services:
+      # Official postgres:16 image, same version as docker-compose.test.yml.
+      # Started before the job steps so the DB is ready when tests run.
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: adonisjs_tutorial_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+      # Catches registration and password reset emails so functional tests
+      # can assert on what was sent without any real delivery.
+      mailhog:
+        image: mailhog/mailhog
+        ports:
+          - 1025:1025
+          - 8025:8025
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          # npm cache keyed on package-lock.json: skips install on cache hit
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      # Migrations must run against the fresh service container before any
+      # test touches the database, unit specs under tests/unit/database and
+      # tests/unit/models assume the schema already exists.
+      - name: Run migrations
+        run: node ace migration:run --force
+
+      # Functional tests start the AdonisJS HTTP server and issue real requests.
+      # Future browser / E2E suites will use @japa/browser-client with Playwright
+      # in headless-chromium mode; install steps will be added when that suite
+      # is introduced.
+      - name: Run tests
+        run: npm test

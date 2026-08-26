@@ -7,44 +7,188 @@
 import { BaseModel, column } from '@adonisjs/lucid/orm'
 import { DateTime } from 'luxon'
 
-export class AuthAccessTokenSchema extends BaseModel {
-  static $columns = ['abilities', 'createdAt', 'expiresAt', 'hash', 'id', 'lastUsedAt', 'name', 'tokenableId', 'type', 'updatedAt'] as const
-  $columns = AuthAccessTokenSchema.$columns
-  @column()
-  declare abilities: string
-  @column.dateTime({ autoCreate: true })
-  declare createdAt: DateTime | null
-  @column.dateTime()
-  declare expiresAt: DateTime | null
-  @column()
-  declare hash: string
-  @column({ isPrimary: true })
-  declare id: number
-  @column.dateTime()
-  declare lastUsedAt: DateTime | null
-  @column()
-  declare name: string | null
-  @column()
-  declare tokenableId: number
-  @column()
-  declare type: string
-  @column.dateTime({ autoCreate: true, autoUpdate: true })
-  declare updatedAt: DateTime | null
-}
-
-export class UserSchema extends BaseModel {
-  static $columns = ['createdAt', 'email', 'fullName', 'id', 'password', 'updatedAt'] as const
-  $columns = UserSchema.$columns
+export class ActivationTokenSchema extends BaseModel {
+  static $columns = ['createdAt', 'expiresAt', 'id', 'token', 'userId', 'validatedAt'] as const
+  $columns = ActivationTokenSchema.$columns
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
+  @column.dateTime()
+  declare expiresAt: DateTime | null
+  @column({ isPrimary: true })
+  declare id: bigint | number
+  @column()
+  declare token: string | null
+  @column()
+  declare userId: bigint | number | null
+  @column.dateTime()
+  declare validatedAt: DateTime | null
+}
+
+export class BlacklistedTokenSchema extends BaseModel {
+  static $columns = ['blacklistedAt', 'createdAt', 'expiresAt', 'id', 'jti', 'token', 'userId', 'validatedAt'] as const
+  $columns = BlacklistedTokenSchema.$columns
+  @column.dateTime()
+  declare blacklistedAt: DateTime | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column.dateTime()
+  declare expiresAt: DateTime | null
+  @column({ isPrimary: true })
+  declare id: bigint | number
+  @column()
+  declare jti: string | null
+  @column()
+  declare token: string
+  @column()
+  declare userId: bigint | number | null
+  @column.dateTime()
+  declare validatedAt: DateTime | null
+}
+
+export class CacheSchema extends BaseModel {
+  static $columns = ['expiresAt', 'key', 'value'] as const
+  $columns = CacheSchema.$columns
+  @column.dateTime()
+  declare expiresAt: DateTime | null
+  @column({ isPrimary: true })
+  declare key: string
+  @column()
+  declare value: string | null
+}
+
+export class CategorySchema extends BaseModel {
+  static $columns = ['categoryName', 'id'] as const
+  $columns = CategorySchema.$columns
+  @column()
+  declare categoryName: string
+  @column({ isPrimary: true })
+  declare id: bigint | number
+}
+
+export class CustomerSchema extends BaseModel {
+  static $columns = ['address', 'email', 'firstName', 'id', 'lastName', 'telephone'] as const
+  $columns = CustomerSchema.$columns
+  @column()
+  declare address: string
   @column()
   declare email: string
   @column()
-  declare fullName: string | null
+  declare firstName: string
   @column({ isPrimary: true })
-  declare id: number
+  declare id: bigint | number
+  @column()
+  declare lastName: string
+  @column()
+  declare telephone: string
+}
+
+export class OrderSchema extends BaseModel {
+  static $columns = ['customerId', 'id', 'productId', 'quantity', 'total'] as const
+  $columns = OrderSchema.$columns
+  @column()
+  declare customerId: bigint | number
+  @column({ isPrimary: true })
+  declare id: bigint | number
+  @column()
+  declare productId: bigint | number
+  @column()
+  declare quantity: number
+  @column()
+  declare total: number
+}
+
+export class PasswordResetTokenSchema extends BaseModel {
+  static $columns = ['expiryDate', 'id', 'token', 'type', 'userId'] as const
+  $columns = PasswordResetTokenSchema.$columns
+  @column.dateTime()
+  declare expiryDate: DateTime
+  @column({ isPrimary: true })
+  declare id: bigint | number
+  @column()
+  declare token: string
+  @column()
+  declare type: string
+  @column()
+  declare userId: bigint | number | null
+}
+
+export class PermissionSchema extends BaseModel {
+  static $columns = ['action', 'id', 'resource'] as const
+  $columns = PermissionSchema.$columns
+  @column()
+  declare action: string
+  @column({ isPrimary: true })
+  declare id: bigint | number
+  @column()
+  declare resource: string
+}
+
+export class ProductSchema extends BaseModel {
+  static $columns = ['categoryId', 'id', 'productName', 'unitPrice'] as const
+  $columns = ProductSchema.$columns
+  @column()
+  declare categoryId: bigint | number
+  @column({ isPrimary: true })
+  declare id: bigint | number
+  @column()
+  declare productName: string
+  @column()
+  declare unitPrice: number
+}
+
+export class RateLimitSchema extends BaseModel {
+  static $columns = ['expire', 'key', 'points'] as const
+  $columns = RateLimitSchema.$columns
+  @column()
+  declare expire: bigint | number | null
+  @column({ isPrimary: true })
+  declare key: string
+  @column()
+  declare points: number
+}
+
+export class RolePermissionSchema extends BaseModel {
+  static $columns = ['permissionId', 'roleId'] as const
+  $columns = RolePermissionSchema.$columns
+  @column()
+  declare permissionId: bigint | number
+  @column({ isPrimary: true })
+  declare roleId: bigint | number
+}
+
+export class RoleUserSchema extends BaseModel {
+  static $columns = ['roleId', 'userId'] as const
+  $columns = RoleUserSchema.$columns
+  @column()
+  declare roleId: bigint | number
+  @column({ isPrimary: true })
+  declare userId: bigint | number
+}
+
+export class RoleSchema extends BaseModel {
+  static $columns = ['id', 'roleName'] as const
+  $columns = RoleSchema.$columns
+  @column({ isPrimary: true })
+  declare id: bigint | number
+  @column()
+  declare roleName: string
+}
+
+export class UserSchema extends BaseModel {
+  static $columns = ['accountLocked', 'email', 'enabled', 'firstName', 'id', 'lastName', 'password'] as const
+  $columns = UserSchema.$columns
+  @column()
+  declare accountLocked: boolean
+  @column()
+  declare email: string
+  @column()
+  declare enabled: boolean
+  @column()
+  declare firstName: string
+  @column({ isPrimary: true })
+  declare id: bigint | number
+  @column()
+  declare lastName: string
   @column({ serializeAs: null })
-  declare password: string
-  @column.dateTime({ autoCreate: true, autoUpdate: true })
-  declare updatedAt: DateTime | null
+  declare password: string | null
 }

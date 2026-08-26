@@ -665,7 +665,11 @@ export default await Env.create(new URL('../', import.meta.url), {
 - [ ] Implement global exception handler in `app/exceptions/handler.ts` (wraps all errors in `ApiResponse` shape with `success: false`)
 - [ ] Implement `ResponseTimeMiddleware` and register it globally in `start/kernel.ts`
 - [ ] Register `auth` and `role` as named middleware in `start/kernel.ts` (stubs - implementation comes in `feature/auth`)
-- [ ] Configure `adonis-autoswagger` for API documentation
+- [ ] Configure `adonis-autoswagger` for API documentation, expose `/swagger` and `/docs`
+- [ ] Install every dependency the whole project's Tech Stack needs, not just this branch's own: `pg`, `@adonisjs/bouncer`, `@adonisjs/limiter`, `@adonisjs/mail`, `@adonisjs/cache`, `argon2`, `jose`, `adonis-autoswagger`, so no later branch needs a mid-branch install
+- [ ] Configure `@adonisjs/bouncer`, `@adonisjs/limiter` (database store) and `@adonisjs/mail` (SMTP against Mailhog) with their base scaffolding; the app-specific wiring (the JWT guard, Argon2 as the active hasher, real policies) still belongs to the branch that owns that behavior
+- [ ] Configure `@adonisjs/cache` with an in-memory L1 layer and a database L2 layer, for `feature/categories` to use on its list endpoint
+- [ ] Add Mailhog to both `docker-compose.yml` and `docker-compose.test.yml`, and to both CI workflows
 - [ ] Add `GET /api/v1/health` health-check route
 - [ ] Set up GitHub Actions `ci.yml` and `pr-checks.yml`
 - [ ] Functional test: `GET /api/v1/health` returns 200 with `ApiResponse` shape
@@ -844,6 +848,28 @@ router.group(() => {
 | POST | `/api/v1/auth/reset-password` | Consume token, set new password | Public |
 | GET | `/api/v1/auth/me` | Current user profile | Authenticated |
 
+**User, role and permission administration.** Registration always assigns the default `USER` role and nothing else in the app manages `users`, `roles` or `permissions` afterward, promoting an account to `ADMIN`, creating a new role, or changing what a role can do would otherwise only be possible by hand in the database. These endpoints close that gap, all `ADMIN` only since they operate on other accounts and on the authorization model itself.
+
+| Method | URL | Description | Access |
+|---|---|---|---|
+| GET | `/api/v1/users` | Paginated list of users | ADMIN |
+| GET | `/api/v1/users/:id` | User detail with roles preloaded | ADMIN |
+| PUT | `/api/v1/users/:id` | Update `firstName`, `lastName`, `email`, `enabled`, `accountLocked` | ADMIN |
+| DELETE | `/api/v1/users/:id` | Delete a user | ADMIN |
+| POST | `/api/v1/users/:id/roles` | Assign a role to a user | ADMIN |
+| DELETE | `/api/v1/users/:id/roles/:roleId` | Revoke a role from a user | ADMIN |
+| GET | `/api/v1/roles` | Paginated list of roles | ADMIN |
+| GET | `/api/v1/roles/:id` | Role detail with permissions preloaded | ADMIN |
+| POST | `/api/v1/roles` | Create a role | ADMIN |
+| PUT | `/api/v1/roles/:id` | Update a role | ADMIN |
+| DELETE | `/api/v1/roles/:id` | Delete a role, blocked with 409 while any user still has it | ADMIN |
+| POST | `/api/v1/roles/:id/permissions` | Assign a permission to a role | ADMIN |
+| DELETE | `/api/v1/roles/:id/permissions/:permissionId` | Revoke a permission from a role | ADMIN |
+| GET | `/api/v1/permissions` | Paginated list of permissions | ADMIN |
+| POST | `/api/v1/permissions` | Create a permission (`resource`, `action`) | ADMIN |
+| PUT | `/api/v1/permissions/:id` | Update a permission | ADMIN |
+| DELETE | `/api/v1/permissions/:id` | Delete a permission, blocked with 409 while any role still has it | ADMIN |
+
 ### Tasks
 
 - [ ] Install and configure `@adonisjs/auth` with the JWT guard; configure `config/auth.ts`
@@ -868,6 +894,17 @@ router.group(() => {
 - [ ] Functional test (full auth flow): register -> activate -> login -> `GET /auth/me` -> logout -> `GET /auth/me` with revoked token returns 401
 - [ ] Functional test (middleware smoke): protected stub route returns 401 without token, 200 with valid `USER` token; same route with `role('ADMIN')` returns 403 for `USER`, 200 for `ADMIN`
 - [ ] Functional test (rate limiting): 11th login attempt within 60 s returns 429
+- [ ] Create `userValidator` (`updateUserSchema`), `roleValidator` (`createRoleSchema`, `updateRoleSchema`), `permissionValidator` (`createPermissionSchema`, `updatePermissionSchema`), all VineJS, all `ADMIN` only
+- [ ] Implement `UsersService`: `findAll(page, limit)`, `findOne(id)`, `update(id, data)`, `remove(id)`, `assignRole(id, roleId)`, `revokeRole(id, roleId)`; `assignRole`/`revokeRole` are idempotent, no error re-assigning a role the user already has
+- [ ] Implement `RolesService`: `findAll(page, limit)`, `findOne(id)`, `create(data)`, `update(id, data)`, `remove(id)`, `assignPermission(id, permissionId)`, `revokePermission(id, permissionId)`
+- [ ] Business rule: a role with at least one user still assigned cannot be deleted, throw HTTP 409
+- [ ] Implement `PermissionsService`: `findAll(page, limit)`, `findOne(id)`, `create(data)`, `update(id, data)`, `remove(id)`
+- [ ] Business rule: a permission still attached to at least one role cannot be deleted, throw HTTP 409
+- [ ] Create `UsersController`, `RolesController`, `PermissionsController`, thin, `@inject()`, calling their services and using `respond()`
+- [ ] Declare all administration routes under `middleware.auth()` + `middleware.role({ roles: ['ADMIN'] })`
+- [ ] Unit test: `UsersService.assignRole` attaches without duplicating an existing pivot row; `RolesService.remove` throws 409 when users are still assigned; `PermissionsService.remove` throws 409 when a role still has it
+- [ ] Functional test: full CRUD lifecycle for users, roles and permissions; assigning and revoking a role on a user changes what that user's JWT is authorized to do on a subsequent request; all responses match `ApiResponse` shape
+- [ ] Functional test (auth): every administration route returns 401 without a token and 403 with a non `ADMIN` token
 
 ---
 

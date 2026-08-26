@@ -1,38 +1,19 @@
 import { defineConfig } from '@adonisjs/auth'
-import { sessionGuard, sessionUserProvider } from '@adonisjs/auth/session'
-import { tokensGuard, tokensUserProvider } from '@adonisjs/auth/access_tokens'
+import { jwtGuard } from '#auth/jwt_guard'
 import type { InferAuthenticators, InferAuthEvents, Authenticators } from '@adonisjs/auth/types'
 
 const authConfig = defineConfig({
   /**
    * Default guard used when no guard is explicitly specified.
    */
-  default: 'api',
+  default: 'jwt',
 
   guards: {
     /**
-     * Token-based guard for stateless API authentication.
+     * Stateless guard backed by the custom JwtGuard in app/auth/jwt_guard.ts,
+     * the only guard this project authenticates requests with.
      */
-    api: tokensGuard({
-      provider: tokensUserProvider({
-        tokens: 'accessTokens',
-        model: () => import('#models/user'),
-      }),
-    }),
-
-    /**
-     * Session-based guard for browser authentication.
-     */
-    web: sessionGuard({
-      /**
-       * Enable persistent login using remember-me tokens.
-       */
-      useRememberMeTokens: false,
-
-      provider: sessionUserProvider({
-        model: () => import('#models/user'),
-      }),
-    }),
+    jwt: jwtGuard(),
   },
 })
 

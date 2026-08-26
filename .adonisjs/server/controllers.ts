@@ -4,7 +4,13 @@
  */
 
 export const controllers = {
-  AccessTokens: () => import('#controllers/access_tokens_controller'),
-  NewAccount: () => import('#controllers/new_account_controller'),
-  Profile: () => import('#controllers/profile_controller'),
+  Auth: () => import('#controllers/auth_controller'),
+  Categories: () => import('#controllers/categories_controller'),
+  Customers: () => import('#controllers/customers_controller'),
+  Health: () => import('#controllers/health_controller'),
+  Orders: () => import('#controllers/orders_controller'),
+  Permissions: () => import('#controllers/permissions_controller'),
+  Products: () => import('#controllers/products_controller'),
+  Roles: () => import('#controllers/roles_controller'),
+  Users: () => import('#controllers/users_controller'),
 }

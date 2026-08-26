@@ -3,35 +3,268 @@
 | Routes file
 |--------------------------------------------------------------------------
 |
-| The routes file is used for defining the HTTP routes.
+| All HTTP routes are declared here. AdonisJS resolves controllers lazily
+| using dynamic imports so that only the controllers needed for a request
+| are loaded. Named middleware exported from start/kernel.ts are applied
+| per-route or per-group with .use([middleware.auth(), ...]).
+|
+| Route path convention: /api/v1/<resource> (plural, snake_case).
 |
 */
 
-import { middleware } from '#start/kernel'
 import router from '@adonisjs/core/services/router'
-import { controllers } from '#generated/controllers'
+import AutoSwagger from 'adonis-autoswagger'
+import { middleware } from '#start/kernel'
+import { authThrottle } from '#start/limiter'
+import swagger from '#config/swagger'
 
-router.get('/', () => {
-  return { hello: 'world' }
+// Lazy import — AdonisJS resolves the module on the first matching request
+const HealthController = () => import('#controllers/health_controller')
+const AuthController = () => import('#controllers/auth_controller')
+const UsersController = () => import('#controllers/users_controller')
+const RolesController = () => import('#controllers/roles_controller')
+const PermissionsController = () => import('#controllers/permissions_controller')
+const CategoriesController = () => import('#controllers/categories_controller')
+const ProductsController = () => import('#controllers/products_controller')
+const CustomersController = () => import('#controllers/customers_controller')
+const OrdersController = () => import('#controllers/orders_controller')
+
+/*
+|--------------------------------------------------------------------------
+| Global route param matchers
+|--------------------------------------------------------------------------
+|
+| Without this, a non-numeric :id/:roleId/:permissionId (for example
+| GET /api/v1/categories/abc) reaches the service layer as NaN, which
+| Postgres rejects as a raw "invalid input syntax for type bigint" error
+| with no .status property, falling through the exception handler's
+| generic 500 branch instead of a clean 404. router.matchers.number()
+| restricts these params to digit strings before a route ever matches, so
+| a non-numeric value 404s at the routing layer, and casts the matched
+| value to an actual number, not just a numeric string.
+|
+*/
+router.where('id', router.matchers.number())
+router.where('roleId', router.matchers.number())
+router.where('permissionId', router.matchers.number())
+
+/*
+|--------------------------------------------------------------------------
+| Health check
+|--------------------------------------------------------------------------
+|
+| Public route, no authentication required. Used by load balancers and
+| container orchestrators to determine whether the instance is alive.
+|
+*/
+router.get('/api/v1/health', [HealthController, 'index'])
+
+/*
+|--------------------------------------------------------------------------
+| API documentation
+|--------------------------------------------------------------------------
+|
+| /swagger returns the generated OpenAPI spec in YAML; /docs renders it
+| through Swagger UI. Both are public, documentation is not a protected
+| resource, and adonis-autoswagger's own default `ignore` list already
+| excludes these two paths from appearing in the spec they generate.
+|
+*/
+router.get('/swagger', async () => {
+  return AutoSwagger.default.docs(router.toJSON(), swagger)
 })
 
+router.get('/docs', async () => {
+  return AutoSwagger.default.ui('/swagger', swagger)
+})
+
+/*
+|--------------------------------------------------------------------------
+| API v1 — resource routes
+|--------------------------------------------------------------------------
+|
+| Auth, categories, products, customers and orders routes are added by
+| their respective feature branches, starting with feature/auth.
+|
+*/
+
+/*
+|--------------------------------------------------------------------------
+| Auth
+|--------------------------------------------------------------------------
+|
+| register, login and forgot-password are rate limited with authThrottle
+| (THROTTLE_AUTH_MAX per THROTTLE_AUTH_WINDOW seconds, per the README) since
+| they are the endpoints an attacker would script against — credential
+| stuffing on login, mass account creation on register, and reset-token
+| flooding on forgot-password. activate and reset-password are excluded:
+| both already require an unguessable token as the actual defense, and
+| logout/refresh/me are excluded because middleware.auth() already limits
+| them to requests bearing a valid, non-blacklisted JWT.
+|
+*/
 router
   .group(() => {
-    router
-      .group(() => {
-        router.post('signup', [controllers.NewAccount, 'store'])
-        router.post('login', [controllers.AccessTokens, 'store'])
-      })
-      .prefix('auth')
-      .as('auth')
+    router.post('register', [AuthController, 'register']).use(authThrottle)
+    router.post('activate', [AuthController, 'activate'])
+    router.post('login', [AuthController, 'login']).use(authThrottle)
+    router.post('logout', [AuthController, 'logout']).use(middleware.auth())
+    router.post('refresh', [AuthController, 'refresh']).use(middleware.auth())
+    router.post('forgot-password', [AuthController, 'forgotPassword']).use(authThrottle)
+    router.post('reset-password', [AuthController, 'resetPassword'])
+    router.get('me', [AuthController, 'me']).use(middleware.auth())
+  })
+  .prefix('/api/v1/auth')
 
-    router
-      .group(() => {
-        router.get('profile', [controllers.Profile, 'show'])
-        router.post('logout', [controllers.AccessTokens, 'destroy'])
-      })
-      .prefix('account')
-      .as('profile')
-      .use(middleware.auth())
+/*
+|--------------------------------------------------------------------------
+| User, role and permission administration
+|--------------------------------------------------------------------------
+|
+| Registration always assigns the default USER role and nothing else in
+| the app manages `users`, `roles` or `permissions` afterward — these
+| endpoints are the only way to promote an account to ADMIN, create a new
+| role, or change what a role can do. Every single route below operates on
+| other accounts or on the authorization model itself, so all of them are
+| ADMIN only, applied at route declaration time via the group-level
+| .use([middleware.auth(), middleware.role({ roles: ['ADMIN'] })]) rather
+| than added retroactively per-route.
+|
+| Note there is deliberately no GET /api/v1/permissions/:id route: the
+| README's Endpoints table for this subsection lists a detail route for
+| users and roles but not for permissions.
+|
+*/
+router
+  .group(() => {
+    router.get('users', [UsersController, 'index'])
+    router.get('users/:id', [UsersController, 'show'])
+    router.put('users/:id', [UsersController, 'update'])
+    router.delete('users/:id', [UsersController, 'destroy'])
+    router.post('users/:id/roles', [UsersController, 'assignRole'])
+    router.delete('users/:id/roles/:roleId', [UsersController, 'revokeRole'])
+
+    router.get('roles', [RolesController, 'index'])
+    router.get('roles/:id', [RolesController, 'show'])
+    router.post('roles', [RolesController, 'store'])
+    router.put('roles/:id', [RolesController, 'update'])
+    router.delete('roles/:id', [RolesController, 'destroy'])
+    router.post('roles/:id/permissions', [RolesController, 'assignPermission'])
+    router.delete('roles/:id/permissions/:permissionId', [RolesController, 'revokePermission'])
+
+    router.get('permissions', [PermissionsController, 'index'])
+    router.post('permissions', [PermissionsController, 'store'])
+    router.put('permissions/:id', [PermissionsController, 'update'])
+    router.delete('permissions/:id', [PermissionsController, 'destroy'])
   })
   .prefix('/api/v1')
+  .use([middleware.auth(), middleware.role({ roles: ['ADMIN'] })])
+
+/*
+|--------------------------------------------------------------------------
+| Categories
+|--------------------------------------------------------------------------
+|
+| The list and detail routes are public, matching the README's Endpoints
+| table for this branch. The three mutation routes are ADMIN only, applied
+| individually at route declaration time with
+| .use([middleware.auth(), middleware.role({ roles: ['ADMIN'] })]), the
+| exact pattern the README's own code sample for this branch shows.
+|
+*/
+router.get('/api/v1/categories', [CategoriesController, 'index'])
+router.get('/api/v1/categories/:id', [CategoriesController, 'show'])
+router
+  .post('/api/v1/categories', [CategoriesController, 'store'])
+  .use([middleware.auth(), middleware.role({ roles: ['ADMIN'] })])
+router
+  .put('/api/v1/categories/:id', [CategoriesController, 'update'])
+  .use([middleware.auth(), middleware.role({ roles: ['ADMIN'] })])
+router
+  .delete('/api/v1/categories/:id', [CategoriesController, 'destroy'])
+  .use([middleware.auth(), middleware.role({ roles: ['ADMIN'] })])
+
+/*
+|--------------------------------------------------------------------------
+| Products
+|--------------------------------------------------------------------------
+|
+| The list and detail routes are public, matching the README's Endpoints
+| table for this branch. The three mutation routes are ADMIN only, applied
+| individually at route declaration time with
+| .use([middleware.auth(), middleware.role({ roles: ['ADMIN'] })]), the
+| same pattern the categories routes above use. The :id param here is
+| already covered by the router.where('id', router.matchers.number())
+| matcher declared at the top of this file, so a non-numeric product id
+| 404s at the routing layer without any extra registration.
+|
+*/
+router.get('/api/v1/products', [ProductsController, 'index'])
+router.get('/api/v1/products/:id', [ProductsController, 'show'])
+router
+  .post('/api/v1/products', [ProductsController, 'store'])
+  .use([middleware.auth(), middleware.role({ roles: ['ADMIN'] })])
+router
+  .put('/api/v1/products/:id', [ProductsController, 'update'])
+  .use([middleware.auth(), middleware.role({ roles: ['ADMIN'] })])
+router
+  .delete('/api/v1/products/:id', [ProductsController, 'destroy'])
+  .use([middleware.auth(), middleware.role({ roles: ['ADMIN'] })])
+
+/*
+|--------------------------------------------------------------------------
+| Customers
+|--------------------------------------------------------------------------
+|
+| Unlike categories and products, every customers route requires
+| authentication, matching the README's Endpoints table and Authorization
+| Rules for this branch ("customers, orders -> Authenticated" for GET,
+| "ADMIN role only" for mutations). The list and detail routes are declared
+| with .use(middleware.auth()) alone; the three mutation routes add
+| middleware.role({ roles: ['ADMIN'] }) on top, the same
+| .use([middleware.auth(), middleware.role({ roles: ['ADMIN'] })]) pattern
+| the categories and products mutation routes above already use. The :id
+| param here is already covered by the router.where('id',
+| router.matchers.number()) matcher declared at the top of this file.
+|
+*/
+router.get('/api/v1/customers', [CustomersController, 'index']).use(middleware.auth())
+router.get('/api/v1/customers/:id', [CustomersController, 'show']).use(middleware.auth())
+router
+  .post('/api/v1/customers', [CustomersController, 'store'])
+  .use([middleware.auth(), middleware.role({ roles: ['ADMIN'] })])
+router
+  .put('/api/v1/customers/:id', [CustomersController, 'update'])
+  .use([middleware.auth(), middleware.role({ roles: ['ADMIN'] })])
+router
+  .delete('/api/v1/customers/:id', [CustomersController, 'destroy'])
+  .use([middleware.auth(), middleware.role({ roles: ['ADMIN'] })])
+router.get('/api/v1/customers/:id/orders', [OrdersController, 'forCustomer']).use(middleware.auth())
+
+/*
+|--------------------------------------------------------------------------
+| Orders
+|--------------------------------------------------------------------------
+|
+| Every orders route requires authentication, matching the README's
+| Endpoints table and Authorization Rules for this branch, the same
+| "authenticated for reads, ADMIN for writes" split the customers routes
+| above already use. The nested GET /api/v1/customers/:id/orders route is
+| declared just above, right after the customers routes, since it belongs
+| to the customers resource path even though it is served by
+| OrdersController. The :id param here is already covered by the
+| router.where('id', router.matchers.number()) matcher declared at the top
+| of this file.
+|
+*/
+router.get('/api/v1/orders', [OrdersController, 'index']).use(middleware.auth())
+router.get('/api/v1/orders/:id', [OrdersController, 'show']).use(middleware.auth())
+router
+  .post('/api/v1/orders', [OrdersController, 'store'])
+  .use([middleware.auth(), middleware.role({ roles: ['ADMIN'] })])
+router
+  .put('/api/v1/orders/:id', [OrdersController, 'update'])
+  .use([middleware.auth(), middleware.role({ roles: ['ADMIN'] })])
+router
+  .delete('/api/v1/orders/:id', [OrdersController, 'destroy'])
+  .use([middleware.auth(), middleware.role({ roles: ['ADMIN'] })])
