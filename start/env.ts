@@ -19,7 +19,7 @@ export default await Env.create(new URL('../', import.meta.url), {
   LOG_LEVEL: Env.schema.string(),
 
   // App
-  APP_KEY: Env.schema.string(),
+  APP_KEY: Env.schema.secret(),
   APP_URL: Env.schema.string({ format: 'url', tld: false }),
 
   // Session
@@ -33,7 +33,7 @@ export default await Env.create(new URL('../', import.meta.url), {
   DB_DATABASE: Env.schema.string(),
 
   // Auth
-  JWT_SECRET: Env.schema.string(),
+  JWT_SECRET: Env.schema.secret(),
   JWT_EXPIRY: Env.schema.string(),
 
   // Hashing
