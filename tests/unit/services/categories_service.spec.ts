@@ -23,12 +23,9 @@ import db from '@adonisjs/lucid/services/db'
 import CategoriesService from '#services/categories_service'
 import Category from '#models/category'
 import Product from '#models/product'
+import { uniqueName } from '#tests/helpers/test_utils'
 
 const categoriesService = new CategoriesService()
-
-function uniqueName(prefix: string) {
-  return `${prefix}_${crypto.randomUUID()}`
-}
 
 test.group('CategoriesService - CRUD', (group) => {
   group.setup(async () => {
