@@ -1,6 +1,7 @@
 import { BaseMail } from '@adonisjs/mail'
 import env from '#start/env'
 import type User from '#models/user'
+import { escapeHtml } from '#mails/escape_html'
 
 /**
  * Sent once, right after AuthService.register creates the account. The
@@ -46,7 +47,7 @@ export default class ActivationMail extends BaseMail {
           `This link expires in 24 hours.`
       )
       .html(
-        `<p>Hi ${this.user.firstName},</p>` +
+        `<p>Hi ${escapeHtml(this.user.firstName)},</p>` +
           `<p>Welcome to AdonisJS Tutorial. Activate your account by clicking the link below:</p>` +
           `<p><a href="${activationUrl}">${activationUrl}</a></p>` +
           `<p>This link expires in 24 hours.</p>`
