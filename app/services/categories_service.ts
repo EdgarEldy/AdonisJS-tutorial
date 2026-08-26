@@ -27,12 +27,12 @@ const E_CATEGORY_IN_USE = createError(
 // affects, since a create or delete shifts every later page's contents
 // anyway. A short 5 minute TTL is kept as a backstop in case a write path
 // is ever added that forgets to clear the namespace.
-const CATEGORIES_LIST_NAMESPACE = 'categories'
 const CATEGORIES_LIST_TTL = '5m'
 
-function categoriesListCache() {
-  return cache.namespace(CATEGORIES_LIST_NAMESPACE)
-}
+// cache.namespace() is a pure, cheap lookup with no per-call state, so it is
+// hoisted once here instead of being re-invoked at every findAll/create/
+// update/remove call site.
+const categoriesListCache = cache.namespace('categories')
 
 /**
  * Owns every read and write to the `categories` table. No constructor
@@ -41,7 +41,7 @@ function categoriesListCache() {
  */
 export default class CategoriesService {
   async findAll(page: number, limit: number): Promise<PageResponse<Category>> {
-    return categoriesListCache().getOrSet({
+    return categoriesListCache.getOrSet({
       key: `list:page:${page}:limit:${limit}`,
       ttl: CATEGORIES_LIST_TTL,
       factory: async () => {
@@ -57,7 +57,7 @@ export default class CategoriesService {
 
   async create(data: CreateCategoryPayload): Promise<Category> {
     const category = await Category.create(data)
-    await categoriesListCache().clear()
+    await categoriesListCache.clear()
     return category
   }
 
@@ -65,7 +65,7 @@ export default class CategoriesService {
     const category = await Category.findOrFail(id)
     category.merge(data)
     await category.save()
-    await categoriesListCache().clear()
+    await categoriesListCache.clear()
     return category
   }
 
@@ -84,12 +84,12 @@ export default class CategoriesService {
   async remove(id: number): Promise<void> {
     const category = await Category.findOrFail(id)
 
-    const stillInUse = await category.related('products').query().first()
+    const stillInUse = await category.related('products').query().select('id').first()
     if (stillInUse) {
       throw new E_CATEGORY_IN_USE()
     }
 
     await category.delete()
-    await categoriesListCache().clear()
+    await categoriesListCache.clear()
   }
 }
