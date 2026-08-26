@@ -27,7 +27,12 @@ export type JwtPayload = {
 }
 
 function secretKey() {
-  return new TextEncoder().encode(env.get('JWT_SECRET'))
+  // JWT_SECRET is Env.schema.secret(), so env.get() returns a Secret<string>
+  // that redacts itself from logs and console output. release() is the only
+  // way to get the raw value back out, needed here since TextEncoder has no
+  // awareness of Secret the way the encryption driver in config/encryption.ts
+  // does.
+  return new TextEncoder().encode(env.get('JWT_SECRET').release())
 }
 
 /**
