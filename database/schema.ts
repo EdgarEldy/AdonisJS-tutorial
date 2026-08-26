@@ -45,6 +45,17 @@ export class BlacklistedTokenSchema extends BaseModel {
   declare validatedAt: DateTime | null
 }
 
+export class CacheSchema extends BaseModel {
+  static $columns = ['expiresAt', 'key', 'value'] as const
+  $columns = CacheSchema.$columns
+  @column.dateTime()
+  declare expiresAt: DateTime | null
+  @column({ isPrimary: true })
+  declare key: string
+  @column()
+  declare value: string | null
+}
+
 export class CategorySchema extends BaseModel {
   static $columns = ['categoryName', 'id'] as const
   $columns = CategorySchema.$columns
