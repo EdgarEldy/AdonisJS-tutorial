@@ -26,6 +26,7 @@ const RolesController = () => import('#controllers/roles_controller')
 const PermissionsController = () => import('#controllers/permissions_controller')
 const CategoriesController = () => import('#controllers/categories_controller')
 const ProductsController = () => import('#controllers/products_controller')
+const CustomersController = () => import('#controllers/customers_controller')
 
 /*
 |--------------------------------------------------------------------------
@@ -207,4 +208,33 @@ router
   .use([middleware.auth(), middleware.role({ roles: ['ADMIN'] })])
 router
   .delete('/api/v1/products/:id', [ProductsController, 'destroy'])
+  .use([middleware.auth(), middleware.role({ roles: ['ADMIN'] })])
+
+/*
+|--------------------------------------------------------------------------
+| Customers
+|--------------------------------------------------------------------------
+|
+| Unlike categories and products, every customers route requires
+| authentication, matching the README's Endpoints table and Authorization
+| Rules for this branch ("customers, orders -> Authenticated" for GET,
+| "ADMIN role only" for mutations). The list and detail routes are declared
+| with .use(middleware.auth()) alone; the three mutation routes add
+| middleware.role({ roles: ['ADMIN'] }) on top, the same
+| .use([middleware.auth(), middleware.role({ roles: ['ADMIN'] })]) pattern
+| the categories and products mutation routes above already use. The :id
+| param here is already covered by the router.where('id',
+| router.matchers.number()) matcher declared at the top of this file.
+|
+*/
+router.get('/api/v1/customers', [CustomersController, 'index']).use(middleware.auth())
+router.get('/api/v1/customers/:id', [CustomersController, 'show']).use(middleware.auth())
+router
+  .post('/api/v1/customers', [CustomersController, 'store'])
+  .use([middleware.auth(), middleware.role({ roles: ['ADMIN'] })])
+router
+  .put('/api/v1/customers/:id', [CustomersController, 'update'])
+  .use([middleware.auth(), middleware.role({ roles: ['ADMIN'] })])
+router
+  .delete('/api/v1/customers/:id', [CustomersController, 'destroy'])
   .use([middleware.auth(), middleware.role({ roles: ['ADMIN'] })])
