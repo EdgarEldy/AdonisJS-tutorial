@@ -16,6 +16,18 @@ import db from '@adonisjs/lucid/services/db'
 
 import { loginAsSeeded, ensureSeededUser } from '#tests/helpers/auth_helper'
 
+/**
+ * `response.body()` is typed against the union of every action registered
+ * on a matching literal route (for example both PermissionsController.index
+ * and .store resolve to /api/v1/permissions), so TypeScript cannot narrow
+ * `.data` to the specific shape a given call actually returns. This helper
+ * casts to `any` at the single point every access in this file goes
+ * through, rather than repeating the same cast at every property read.
+ */
+function body(response: { body(): unknown }): any {
+  return response.body()
+}
+
 test.group('Permissions admin - CRUD lifecycle', (group) => {
   group.setup(async () => {
     await db.beginGlobalTransaction()
@@ -39,10 +51,10 @@ test.group('Permissions admin - CRUD lifecycle', (group) => {
       .json({ resource, action: 'read' })
       .bearerToken(adminToken)
     createResponse.assertStatus(201)
-    assert.properties(createResponse.body(), ['success', 'message', 'data', 'timestamp'])
-    const permissionId = createResponse.body().data.id as number
-    assert.equal(createResponse.body().data.resource, resource)
-    assert.equal(createResponse.body().data.action, 'read')
+    assert.properties(body(createResponse), ['success', 'message', 'data', 'timestamp'])
+    const permissionId = body(createResponse).data.id as number
+    assert.equal(body(createResponse).data.resource, resource)
+    assert.equal(body(createResponse).data.action, 'read')
 
     // GET /api/v1/permissions
     const listResponse = await client
@@ -50,7 +62,7 @@ test.group('Permissions admin - CRUD lifecycle', (group) => {
       .qs({ page: 1, limit: 100 })
       .bearerToken(adminToken)
     listResponse.assertStatus(200)
-    assert.properties(listResponse.body().data, [
+    assert.properties(body(listResponse).data, [
       'items',
       'total',
       'page',
@@ -59,9 +71,7 @@ test.group('Permissions admin - CRUD lifecycle', (group) => {
       'hasNext',
       'hasPrevious',
     ])
-    assert.isTrue(
-      listResponse.body().data.items.some((p: { id: number }) => p.id === permissionId)
-    )
+    assert.isTrue(body(listResponse).data.items.some((p: { id: number }) => p.id === permissionId))
 
     // PUT /api/v1/permissions/:id
     const updateResponse = await client
@@ -69,7 +79,7 @@ test.group('Permissions admin - CRUD lifecycle', (group) => {
       .json({ action: 'write' })
       .bearerToken(adminToken)
     updateResponse.assertStatus(200)
-    assert.equal(updateResponse.body().data.action, 'write')
+    assert.equal(body(updateResponse).data.action, 'write')
 
     // DELETE /api/v1/permissions/:id
     const deleteResponse = await client
@@ -83,7 +93,7 @@ test.group('Permissions admin - CRUD lifecycle', (group) => {
       .bearerToken(adminToken)
     afterDeleteListResponse.assertStatus(200)
     assert.isFalse(
-      afterDeleteListResponse.body().data.items.some((p: { id: number }) => p.id === permissionId)
+      body(afterDeleteListResponse).data.items.some((p: { id: number }) => p.id === permissionId)
     )
   }).timeout(20000)
 
@@ -99,7 +109,7 @@ test.group('Permissions admin - CRUD lifecycle', (group) => {
       .json({ resource, action: 'delete' })
       .bearerToken(adminToken)
     createResponse.assertStatus(201)
-    const permissionId = createResponse.body().data.id as number
+    const permissionId = body(createResponse).data.id as number
 
     const roleName = `ROLE_${crypto.randomUUID()}`
     const createRoleResponse = await client
@@ -107,7 +117,7 @@ test.group('Permissions admin - CRUD lifecycle', (group) => {
       .json({ roleName })
       .bearerToken(adminToken)
     createRoleResponse.assertStatus(201)
-    const roleId = createRoleResponse.body().data.id as number
+    const roleId = body(createRoleResponse).data.id as number
 
     await client
       .post(`/api/v1/roles/${roleId}/permissions`)
@@ -118,7 +128,7 @@ test.group('Permissions admin - CRUD lifecycle', (group) => {
       .delete(`/api/v1/permissions/${permissionId}`)
       .bearerToken(adminToken)
     blockedResponse.assertStatus(409)
-    assert.isFalse(blockedResponse.body().success)
+    assert.isFalse(body(blockedResponse).success)
 
     await client
       .delete(`/api/v1/roles/${roleId}/permissions/${permissionId}`)
