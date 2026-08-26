@@ -75,6 +75,13 @@ export default defineConfig({
     () => import('#start/routes'),
     () => import('#start/kernel'),
     () => import('#start/validator'),
+    // Event -> listener bindings (OrderCreated -> SendOrderNotification).
+    // Loaded after routes/kernel/validator, matching the README's own
+    // preloads sample ordering: routes and middleware need to exist first,
+    // and listener registration has no dependency on the validator preload
+    // either way, so appending it last is the least disruptive place to
+    // add it to the array that is actually already here.
+    () => import('#start/events'),
   ],
 
   /*
