@@ -65,14 +65,22 @@ export default class CustomersService {
    * E_EMAIL_TAKEN check: the database's own unique index on
    * customers.email would already reject a duplicate, but only as a raw
    * constraint violation with no clean .status a controller could act on.
+   *
+   * The email is lowercased before both the uniqueness check and the write,
+   * matching AuthService and UsersService's own normalization. Without it,
+   * Jane@Example.com and jane@example.com would pass this check as distinct
+   * values and register as two customers, defeating the "email uniqueness
+   * enforcement" this branch is specifically asked to provide, since the
+   * database's own unique index is exact-string and equally case-sensitive.
    */
   async create(data: CreateCustomerPayload): Promise<Customer> {
-    const existing = await Customer.query().where('email', data.email).first()
+    const email = data.email.toLowerCase()
+    const existing = await Customer.query().where('email', email).first()
     if (existing) {
       throw new E_EMAIL_TAKEN()
     }
 
-    return Customer.create(data)
+    return Customer.create({ ...data, email })
   }
 
   /**
@@ -81,16 +89,21 @@ export default class CustomersService {
    * `if (data.email && data.email !== existing.email) { ... }` idiom
    * UsersService.update uses for the same problem: updating a customer
    * without touching their email (for example just their address) should
-   * never trip a false conflict against the customer's own row.
+   * never trip a false conflict against the customer's own row. Lowercased
+   * for the same reason create() lowercases it.
    */
   async update(id: number, data: UpdateCustomerPayload): Promise<Customer> {
     const customer = await Customer.findOrFail(id)
 
-    if (data.email && data.email !== customer.email) {
-      const existing = await Customer.query().where('email', data.email).whereNot('id', id).first()
-      if (existing) {
-        throw new E_EMAIL_TAKEN()
+    if (data.email) {
+      const email = data.email.toLowerCase()
+      if (email !== customer.email) {
+        const existing = await Customer.query().where('email', email).whereNot('id', id).first()
+        if (existing) {
+          throw new E_EMAIL_TAKEN()
+        }
       }
+      data = { ...data, email }
     }
 
     customer.merge(data)
