@@ -70,7 +70,15 @@ export class JwtGuard implements GuardContract<User> {
   isAuthenticated = false
   authenticationAttempted = false;
 
-  [symbols.GUARD_KNOWN_EVENTS]: unknown
+  // This guard emits no custom events, unlike the built in session guard.
+  // Typed as {} (an object type with no members) rather than unknown:
+  // InferAuthEvents<Authenticators> in config/auth.ts reads this symbol to
+  // build up EventsList's own type, and `interface X extends unknown {}`
+  // is not valid TypeScript ("can only extend an object type"), a latent
+  // error that nothing forced tsc to actually evaluate until an unrelated
+  // change (start/events.ts's emitter.onError callback, which needs
+  // `keyof EventsList`) required EventsList to be fully resolved.
+  declare [symbols.GUARD_KNOWN_EVENTS]: {}
 
   constructor(ctx: HttpContext) {
     this.#ctx = ctx
